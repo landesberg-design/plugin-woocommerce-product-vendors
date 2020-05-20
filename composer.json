@@ -1,0 +1,14 @@
+{
+    "name": "chrisjezowiczllc/woocommerce-product-vendors",
+    "type": "wordpress-plugin",
+    "description": "",
+    "require": {
+        "php": ">=5.6"
+    },
+    "authors": [
+        {
+            "name": "Chris Jezowicz",
+            "email": "me@chrisjezowicz.com"
+        }
+    ]
+}
