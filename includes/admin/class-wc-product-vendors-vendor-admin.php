@@ -173,11 +173,15 @@ class WC_Product_Vendors_Vendor_Admin {
 		// Filter out pages that vendors should not have access to.
 		add_action( 'init', array( self::$self, 'filter_page_access' ) );
 
+		// Maybe hide admin notices for vendors.
+		add_action( 'in_admin_header', array( self::$self, 'maybe_hide_admin_notices' ), 999 );
+
 		// Restrict vendor access to the single product.
 		add_filter( 'map_meta_cap', array( self::$self, 'map_vendor_capabilities' ), 10, 4 );
 
 		return true;
 	}
+
 
 	/**
 	 * Checks if we need to require additional capabilities for editing other vendor's stuff.
@@ -1782,6 +1786,18 @@ class WC_Product_Vendors_Vendor_Admin {
 		WC_Product_Vendors_Utils::clear_reports_transients();
 
 		return true;
+	}
+
+	/**
+	 * Hides admin notices if user is not admin
+	 *
+	 * @since 2.1.34
+	 * @return void
+	 */
+	public function maybe_hide_admin_notices() {
+		if ( WC_Product_Vendors_Utils::is_vendor() && ! wc_current_user_has_role( 'administrator' ) ) {
+			remove_all_actions( 'admin_notices' );
+		}
 	}
 }
 

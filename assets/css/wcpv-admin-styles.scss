@@ -1,12 +1,12 @@
-.vendor div.updated {
-	display: none !important;
-}
-
 .vendor #adminmenu li.wp-menu-separator {
 	display: none;
 }
 
-.vendor li.bookings_tab.bookings_resources_tab {
+.vendor li.bookings_resources_tab {
+	display: none !important;
+}
+
+.vendor label[for="_wc_booking_has_resources"] {
 	display: none !important;
 }
 

@@ -22,6 +22,9 @@ class WC_Product_Vendors_Taxonomy {
 		// Registers vendor taxonomy.
 		add_action( 'init', array( $this, 'register_vendor_taxonomy' ), 9 );
 
+		// Registers custom updated term messages.
+		add_filter( 'term_updated_messages', array( $this, 'updated_term_messages' ) );
+
 		return true;
 	}
 
@@ -71,6 +74,29 @@ class WC_Product_Vendors_Taxonomy {
 		}
 
 		register_taxonomy( WC_PRODUCT_VENDORS_TAXONOMY, array( 'product' ), apply_filters( 'wcpv_vendor_taxonomy_args', $args ) );
+	}
+
+	/**
+	 * Customize vendor taxonomy updated messages.
+	 *
+	 * @since 2.1.34
+	 *
+	 * @param array $messages The list of available messages.
+	 * @return array
+	 */
+	public function updated_term_messages( $messages ) {
+
+		$messages['wcpv_product_vendors'] = array(
+			0 => '',
+			1 => __( 'Vendor added.', 'woocommerce-product-vendors' ),
+			2 => __( 'Vendor deleted.', 'woocommerce-product-vendors' ),
+			3 => __( 'Vendor updated.', 'woocommerce-product-vendors' ),
+			4 => __( 'Vendor not added.', 'woocommerce-product-vendors' ),
+			5 => __( 'Vendor not updated.', 'woocommerce-product-vendors' ),
+			6 => __( 'Vendor deleted.', 'woocommerce-product-vendors' ),
+		);
+
+		return $messages;
 	}
 
 	/**

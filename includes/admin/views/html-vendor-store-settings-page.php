@@ -53,12 +53,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</tr>
 
 				<tr class="form-field">
-					<th scope="row" valign="top"><label for="wcpv-vendor-email"><?php esc_html_e( 'Vendor Email', 'woocommerce-product-vendors' ); ?></label></th>
+					<th scope="row" valign="top"><label for="wcpv-vendor-email"><?php esc_html_e( 'Vendor Email(required)', 'woocommerce-product-vendors' ); ?></label></th>
 
 					<td>
-						<input type="text" name="vendor_data[email]" value="<?php echo esc_attr( $email ); ?>" />
+						<input type="email" name="vendor_data[email]" required aria-required="true" value="<?php echo esc_attr( $email ); ?>" />
 
-						<p><?php esc_html_e( 'This is the email where all notifications such as new orders, and customer inquiries are sent. You may enter more than one email, separating each with a comma.', 'woocommerce-product-vendors' ); ?></p>
+						<p><?php esc_html_e( 'All notifications will be sent to this email address, including new orders and customer inquiries. Add multiple email addresses by separating them with a comma.', 'woocommerce-product-vendors' ); ?></p>
 					</td>
 				</tr>
 
@@ -76,7 +76,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<th scope="row" valign="top"><label for="wcpv-vendor-commission"><?php esc_html_e( 'Commission', 'woocommerce-product-vendors' ); ?></label></th>
 
 					<td>
-						<input type="text" disabled="disabled" value="<?php echo esc_attr( $vendor_commission ); ?>" />
+						<input type="number" disabled="disabled" value="<?php echo esc_attr( $vendor_commission ); ?>" step="any" min="0" />
 
 						<p><?php esc_html_e( 'Default commission you will receive per product sale. Please note product level commission can override this.  Check your product to confirm.', 'woocommerce-product-vendors' ); ?></p>
 					</td>

@@ -30,12 +30,16 @@ class WC_Product_Vendors_Order {
 		$this->commission = $commission;
 
 		// process the order
-		add_action( 'woocommerce_order_status_processing', array( $this, 'process' ) );
-		add_action( 'woocommerce_order_status_processing', array( $this, 'maybe_complete_order' ), 20, 1 );
-		add_action( 'woocommerce_order_status_completed', array( $this, 'process' ) );
-		add_action( 'woocommerce_order_status_on-hold', array( $this, 'process' ) );
+
+		add_action( 'woocommerce_order_status_on-hold_to_processing', array( $this, 'process' ) );
+		add_action( 'woocommerce_order_status_on-hold_to_completed', array( $this, 'process' ) );
+		add_action( 'woocommerce_order_status_pending_to_processing', array( $this, 'process' ) );
+		add_action( 'woocommerce_order_status_pending_to_completed', array( $this, 'process' ) );
 		add_action( 'woocommerce_bookings_create_booking_page_add_order_item', array( $this, 'process' ) );
+
 		add_action( 'delete_post', array( $this, 'remove_affected_commissions' ) );
+		add_action( 'woocommerce_order_status_pending_to_processing', array( $this, 'maybe_complete_order' ), 20, 1 );
+		add_action( 'woocommerce_order_status_on-hold_to_processing', array( $this, 'maybe_complete_order' ), 20, 1 );
 
 		add_action( 'wcpv_commission_added', array( $this, 'add_commission_order_note' ) );
 
@@ -46,6 +50,8 @@ class WC_Product_Vendors_Order {
 		add_action( 'woocommerce_order_action_wcpv_manual_create_commission', array( $this, 'process_manual_create_commission_action' ) );
 
 		add_action( 'woocommerce_product_vendors_paypal_webhook_trigger', array( $this, 'process_paypal_webhook' ) );
+
+		add_action( 'woocommerce_payment_complete', array( $this, 'payment_complete' ) );
 
 		$this->log = new WC_Logger();
 
@@ -74,6 +80,7 @@ class WC_Product_Vendors_Order {
 				// Only process the vendor in question.
 				if ( absint( $commission->vendor_id ) === $vendor_id ) {
 					$this->commission->update_status( $commission->id, $commission->order_item_id, 'paid' );
+					WC_Product_Vendors_Utils::update_order_item_meta( $commission->$order_item_id );
 				}
 			}
 		}
@@ -459,5 +466,16 @@ class WC_Product_Vendors_Order {
 		}
 
 		$this->commission->delete_by_order_id( $order_id );
+	}
+
+	/**
+	 * On payment complete do additional processes.
+	 *
+	 * @since 2.1.35
+	 * @param int $order_id ID of the order.
+	 * @return void
+	 */
+	public function payment_complete( $order_id ) {
+		WC_Product_Vendors_Utils::clear_reports_transients();
 	}
 }

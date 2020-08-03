@@ -824,7 +824,7 @@ class WC_Product_Vendors_Utils {
 
 		// if no commission is set in variation or parent product level
 		// check commission from vendor level
-		if ( ! empty( $vendor_data['commission'] ) && '0' != $vendor_data['commission'] ) {
+		if ( is_numeric( $vendor_data['commission'] ) ) {
 			return array( 'commission' => $vendor_data['commission'], 'type' => $vendor_data['commission_type'] );
 		}
 
@@ -1225,6 +1225,19 @@ class WC_Product_Vendors_Utils {
 	}
 
 	/**
+	 * Force save an order item's meta data to alleviate aggressive object caching.
+	 *
+	 * @since 2.1.33
+	 * @param  int $order_item_id
+	 * @return void
+	 */
+	public static function update_order_item_meta( $order_item_id ) {
+		// Force save the order item's meta data which will clear out any existing object cache.
+		$order_item = new WC_Order_Item_Product( $order_item_id );
+		$order_item->save_meta_data();
+	}
+
+	/**
 	 * Set new pending vendor to list to later be
 	 * counted to show as a bubble count on menu.
 	 *
@@ -1399,5 +1412,19 @@ class WC_Product_Vendors_Utils {
 	 */
 	public static function get_paypal_webhook_notification_url() {
 		return add_query_arg( 'wc-api', 'wc_product_vendors_paypal', trailingslashit( get_home_url() ) );
+	}
+
+	/**
+	 * Check if Per-Product Shipping method is globally enabled.
+	 * @since 2.1.36
+	 * @return bool
+	 */
+	public static function is_wcpv_per_product_shipping_enabled() {
+		$shipping_methods = WC()->shipping->get_shipping_methods();
+		if ( array_key_exists( 'wcpv_per_product', $shipping_methods ) ) {
+			$wcpv_shipping = $shipping_methods['wcpv_per_product'];
+			return $wcpv_shipping->is_enabled();
+		}
+		return false;
 	}
 }

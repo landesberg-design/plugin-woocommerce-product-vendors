@@ -395,7 +395,7 @@ class WC_Product_Vendors_Store_Admin {
 		$logo                 = ! empty( $vendor_data['logo'] ) ? $vendor_data['logo'] : '';
 		$profile              = ! empty( $vendor_data['profile'] ) ? $vendor_data['profile'] : '';
 		$email                = ! empty( $vendor_data['email'] ) ? $vendor_data['email'] : '';
-		$commission           = ! empty( $vendor_data['commission'] ) ? $vendor_data['commission'] : '';
+		$commission           = is_numeric( $vendor_data['commission'] ) ? $vendor_data['commission'] : '';
 		$commission_type      = ! empty( $vendor_data['commission_type'] ) ? $vendor_data['commission_type'] : 'percentage';
 		$instant_payout       = ! empty( $vendor_data['instant_payout'] ) ? $vendor_data['instant_payout'] : 'no';
 		$paypal               = ! empty( $vendor_data['paypal'] ) ? $vendor_data['paypal'] : '';
@@ -746,6 +746,7 @@ class WC_Product_Vendors_Store_Admin {
 	 * @return bool
 	 */
 	public function render_commission_page() {
+		$this->maybe_render_bulk_update_notifications();
 		$commissions_list = new WC_Product_Vendors_Store_Admin_Commission_List( new WC_Product_Vendors_Commission( new WC_Product_Vendors_PayPal_MassPay ) );
 
 		$commissions_list->prepare_items();
@@ -770,6 +771,26 @@ class WC_Product_Vendors_Store_Admin {
 		</div>
 	<?php
 		return true;
+	}
+
+	/**
+	 * After performing bulk updates, show a notification to the admin.
+	 *
+	 * @since  2.1.38
+	 * @return void
+	 */
+	private function maybe_render_bulk_update_notifications() {
+		if ( ! empty( $_REQUEST['processed'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$processed               = intval( $_REQUEST['processed'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$items_processed_message = sprintf( _n( '%d item processed.', '%d items processed', $processed, 'woocommerce-product-vendors' ), $processed );
+			WC_Admin_Settings::add_message( $items_processed_message );
+
+			if ( ! empty( $_REQUEST['pay'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				$paid_status_message = esc_html__( 'Paid status will be updated in a few minutes.', 'woocommerce-product-vendors' );
+				WC_Admin_Settings::add_message( $paid_status_message );
+			}
+			WC_Admin_Settings::show_messages();
+		}
 	}
 
 	/**
@@ -921,9 +942,13 @@ class WC_Product_Vendors_Store_Admin {
 					'desc'     => __( 'Enter a default commission that works globally for all vendors as a fallback if commission is not set per vendor level.  Enter a positive number.', 'woocommerce-product-vendors' ),
 					'id'       => 'wcpv_vendor_settings_default_commission',
 					'default'  => '0',
-					'type'     => 'text',
+					'type'     => 'number',
 					'desc_tip' => true,
 					'autoload' => false,
+					'custom_attributes' => array(
+						'step' => 'any',
+						'min'  => '0',
+					),
 				),
 
 				array(

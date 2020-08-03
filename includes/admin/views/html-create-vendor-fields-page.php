@@ -48,10 +48,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 
 	<div class="form-field term-email">
-		<label for="wcpv-vendor-email"><?php esc_html_e( 'Vendor Email', 'woocommerce-product-vendors' ); ?></label>
-		<input type="text" name="vendor_data[email]" value="" />
+		<label for="wcpv-vendor-email"><?php esc_html_e( 'Vendor Email(required)', 'woocommerce-product-vendors' ); ?></label>
+		<input type="email" name="vendor_data[email]" value="" required aria-required="true" />
 
-		<p><?php esc_html_e( 'Enter the email for this vendor.  This is the email where all notifications are sent such as new orders and customer inquiries.  You may enter more than one email separating each with a comma.', 'woocommerce-product-vendors' ); ?></p>
+		<p><?php esc_html_e( 'All notifications will be sent to this email address, including new orders and customer inquiries. Add multiple email addresses by separating them with a comma.', 'woocommerce-product-vendors' ); ?></p>
 	</div>
 
 	<div class="form-field term-admins">
@@ -133,11 +133,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<p><?php esc_html_e( 'Set the local timezone.', 'woocommerce-product-vendors' ); ?></p>
 	</div>
 
-	<div class="form-field term-per-product-shipping">
-		<label for="wcpv-per-product-shipping"><input type="checkbox" id="wcpv-per-product-shipping" name="vendor_data[per_product_shipping]" /> <?php esc_html_e( 'Show Per Product Shipping Rules', 'woocommerce-product-vendors' ); ?></label>
+	<?php if ( WC_Product_Vendors_Utils::is_wcpv_per_product_shipping_enabled() ) { ?>
+		<div class="form-field term-per-product-shipping">
+			<label for="wcpv-per-product-shipping"><input type="checkbox" id="wcpv-per-product-shipping" name="vendor_data[per_product_shipping]" /> <?php esc_html_e( 'Show Per Product Shipping Rules', 'woocommerce-product-vendors' ); ?></label>
 
-		<p><?php esc_html_e( 'When enabled, vendor can edit per product shipping rules.', 'woocommerce-product-vendors' ); ?></p>
-	</div>
+			<p><?php esc_html_e( 'When enabled, vendor can edit per product shipping rules.', 'woocommerce-product-vendors' ); ?></p>
+		</div>
+	<?php } ?>
 
 	<div class="form-field term-bookings">
 		<label for="wcpv-enable-bookings"><input type="checkbox" id="wcpv-enable-bookings" name="vendor_data[enable_bookings]" /> <?php esc_html_e( 'Enable Bookings Feature', 'woocommerce-product-vendors' ); ?></label>
