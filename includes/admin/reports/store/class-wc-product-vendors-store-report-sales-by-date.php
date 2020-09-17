@@ -399,7 +399,7 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 			var main_chart;
 
 			jQuery(function(){
-				var order_data = jQuery.parseJSON( decodeURIComponent( '<?php echo $chart_data; ?>' ) );
+				var order_data = JSON.parse( decodeURIComponent( '<?php echo $chart_data; ?>' ) );
 				var drawGraph = function( highlight ) {
 					var series = [
 						{
