@@ -1,16 +1,16 @@
 <?php
 /**
  * Plugin Name: WooCommerce Product Vendors
- * Version: 2.1.42
+ * Version: 2.1.55
  * Plugin URI: https://woocommerce.com/products/product-vendors/
  * Description: Set up a multi-vendor marketplace that allows vendors to manage their own products and earn commissions. Run stores similar to Amazon or Etsy.
  * Author: WooCommerce
  * Author URI: https://woocommerce.com
  * Requires at least: 4.4.0
  * Requires PHP: 5.5
- * Tested up to: 5.5
+ * Tested up to: 5.7
  * WC requires at least: 2.6
- * WC tested up to: 4.2
+ * WC tested up to: 5.4
  * Text Domain: woocommerce-product-vendors
  * Domain Path: /languages
  *
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! class_exists( 'WC_Product_Vendors' ) ) {
-	define( 'WC_PRODUCT_VENDORS_VERSION', '2.1.42' ); // WRCS: DEFINED_VERSION.
+	define( 'WC_PRODUCT_VENDORS_VERSION', '2.1.55' ); // WRCS: DEFINED_VERSION.
 
 	/**
 	 * Main class.
@@ -166,7 +166,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 			}
 
 			// check for product enquiry.
-			if ( function_exists( 'init_woocommerce_product_enquiry_form' ) ) {
+			if ( function_exists( 'woocommerce_product_enquiry_form_init' ) ) {
 				require_once( dirname( __FILE__ ) . '/includes/integrations/class-wc-product-vendors-product-enquiry.php' );
 			}
 

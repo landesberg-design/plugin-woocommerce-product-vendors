@@ -3,6 +3,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
+use Automattic\WooCommerce\Admin\Features\Navigation\Menu;
+use Automattic\WooCommerce\Admin\Features\Navigation\Screen;
+
 /**
  * Store Admin Class.
  *
@@ -48,6 +51,12 @@ class WC_Product_Vendors_Store_Admin {
 		// save custom fields from taxonomy.
 		add_action( 'created_' . WC_PRODUCT_VENDORS_TAXONOMY, array( self::$self, 'save_vendor_fields' ) );
 
+		// validate the email field when a term is first created.
+		add_filter( 'pre_insert_term', array( self::$self, 'validate_email_field' ), 10, 2 );
+
+		// output a notice if a vendor is missing the email field
+		add_action( 'admin_notices', array( self::$self, 'invalid_vendor_data_notice' ) );
+
 		// modify taxonomy columns.
 		add_filter( 'manage_edit-' . WC_PRODUCT_VENDORS_TAXONOMY . '_columns', array( self::$self, 'modify_vendor_columns' ) );
 
@@ -69,6 +78,9 @@ class WC_Product_Vendors_Store_Admin {
 
 		// add commission top level menu item.
 		add_action( 'admin_menu', array( self::$self, 'register_commissions_menu_item' ) );
+
+		// Register menu items in the new WooCommerce navigation.
+		add_action( 'admin_menu', array( self::$self, 'register_navigation_items' ) );
 
 		// set the screen option.
 		add_filter( 'set-screen-option', array( self::$self, 'set_screen_option' ), 99, 3 );
@@ -189,13 +201,14 @@ class WC_Product_Vendors_Store_Admin {
 	 * @access public
 	 * @since 2.0.0
 	 * @version 2.0.0
-	 * @return bool
+	 * @return array
 	 */
 	public function get_screen_ids() {
 		return apply_filters( 'wcpv_store_admin_screen_ids', array(
 			'edit-wcpv_product_vendors',
 			'toplevel_page_wcpv-commissions',
 			'product',
+			'edit-product',
 			'woocommerce_page_wc-reports',
 			'woocommerce_page_wc-settings',
 		) );
@@ -395,7 +408,7 @@ class WC_Product_Vendors_Store_Admin {
 		$logo                 = ! empty( $vendor_data['logo'] ) ? $vendor_data['logo'] : '';
 		$profile              = ! empty( $vendor_data['profile'] ) ? $vendor_data['profile'] : '';
 		$email                = ! empty( $vendor_data['email'] ) ? $vendor_data['email'] : '';
-		$commission           = is_numeric( $vendor_data['commission'] ) ? $vendor_data['commission'] : '';
+		$commission           = ( ! empty( $vendor_data['commission'] ) && is_numeric( $vendor_data['commission'] ) ) ? $vendor_data['commission'] : '';
 		$commission_type      = ! empty( $vendor_data['commission_type'] ) ? $vendor_data['commission_type'] : 'percentage';
 		$instant_payout       = ! empty( $vendor_data['instant_payout'] ) ? $vendor_data['instant_payout'] : 'no';
 		$paypal               = ! empty( $vendor_data['paypal'] ) ? $vendor_data['paypal'] : '';
@@ -507,7 +520,113 @@ class WC_Product_Vendors_Store_Admin {
 			update_term_meta( $term_id, 'vendor_data', $sanitized_vendor_data );
 		}
 
+		WC_Product_Vendors_Utils::clear_vendor_error_list_transient();
+
 		return true;
+	}
+
+	/**
+	 * Run validation on the vendor email field
+	 *
+	 * @since 2.1.52
+	 * @version 2.1.52
+	 * @param string $term The term name to add.
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return string|WP_Error
+	 */
+	public function validate_email_field( $term, $taxonomy ) {
+		if (
+			WC_PRODUCT_VENDORS_TAXONOMY !== $taxonomy
+			|| empty( $_POST['vendor_data'] )
+			|| ! isset( $_POST['vendor_data']['email'] )
+		) {
+			return $term;
+		}
+
+		// Ensure we have proper email data
+		$emails = explode( ',', $_POST['vendor_data']['email'] );
+		$errors = 0;
+
+		foreach ( $emails as $email ) {
+			if ( $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+				$errors ++;
+			}
+		}
+
+		// If any email is not valid, return an error message
+		if ( $errors === 1 ) {
+			return new WP_Error( 'error', __( 'Please enter a valid Vendor Email', 'woocommerce-product-vendors' ) );
+		} else if ( $errors > 1 ) {
+			return new WP_Error( 'error', __( 'Please ensure all Vendor Emails are valid', 'woocommerce-product-vendors' ) );
+		}
+
+		return $term;
+	}
+
+	/**
+	 * Output a notice if a vendor is missing their email
+	 *
+	 * @since 2.1.52
+	 * @version 2.1.52
+	 * @return void
+	 */
+	public function invalid_vendor_data_notice() {
+		// only show to admin users
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// see if we have errors already cached
+		$errors = ( false !== get_transient( 'wcpv_vendor_error_list' ) ) ? get_transient( 'wcpv_vendor_error_list' ) : array();
+
+		// if nothing cached, run our checks
+		if ( empty( $errors ) ) {
+			// get all vendors
+			$vendors = WC_Product_Vendors_Utils::get_all_vendors();
+
+			if ( empty( $vendors ) ) {
+				set_transient( 'wcpv_vendor_error_list', array( 'none' ), WEEK_IN_SECONDS );
+				return;
+			}
+
+			// check all vendors to ensure they have an email associated
+			foreach ( $vendors as $vendor ) {
+				$vendor_data = get_term_meta( $vendor->term_id, 'vendor_data', true );
+
+				if ( empty( $vendor_data['email'] ) ) {
+					$errors[] = sprintf( '<a href="%1$s">%2$s</a>', get_edit_term_link( $vendor->term_id ), $vendor->name );
+				}
+
+				// only show 10 vendors at a time in the notice
+				if ( count( $errors ) === 10 ) {
+					break;
+				}
+			}
+
+			// cache our errors, if any
+			if ( empty( $errors ) ) {
+				set_transient( 'wcpv_vendor_error_list', array( 'none' ), WEEK_IN_SECONDS );
+			} else {
+				set_transient( 'wcpv_vendor_error_list', $errors, WEEK_IN_SECONDS );
+			}
+		}
+
+		// if we have errors, output those in a notice
+		if ( ! empty( $errors ) && 'none' !== $errors[0] ) :
+			?>
+
+			<div class="notice notice-error is-dismissible">
+				<p>
+					<?php
+					esc_html_e( 'Some Vendors don\'t have a valid email associated with them. This means notification emails will not be sent for these Vendors. Please edit these Vendors and add proper emails: ', 'woocommerce-product-vendors' );
+
+					echo wp_kses_post( implode( ', ', $errors ) );
+					?>
+				</p>
+			</div>
+
+			<?php
+		endif;
 	}
 
 	/**
@@ -692,11 +811,54 @@ class WC_Product_Vendors_Store_Admin {
 	 * @return bool
 	 */
 	public function register_commissions_menu_item() {
-		$hook = add_menu_page( __( 'Vendor Commission', 'woocommerce-product-vendors' ), __( 'Commission', 'woocommerce-product-vendors' ), 'manage_vendors', 'wcpv-commissions', array( $this, 'render_commission_page' ), 'dashicons-chart-pie', 56.77 );
+		$hook = add_menu_page( __( 'Vendor Commission', 'woocommerce-product-vendors' ), __( 'Commission', 'woocommerce-product-vendors' ), 'manage_vendors', 'wcpv-commissions', array( $this, 'render_commission_page' ), 'dashicons-chart-pie', 56 );
 
 		add_action( "load-$hook", array( $this, 'add_screen_options' ) );
 
 		return true;
+	}
+
+	/**
+	 * Register the navigation items in the WooCommerce navigation.
+	 */
+	public function register_navigation_items() {
+		if (
+			! method_exists( Screen::class, 'register_taxonomy' ) ||
+			! method_exists( Menu::class, 'add_plugin_item' ) ||
+			! method_exists( Menu::class, 'add_plugin_category' ) ||
+			! method_exists( Menu::class, 'get_taxonomy_items' )
+		) {
+			return;
+		}
+
+		Menu::add_plugin_category(
+			array(
+				'id'    => 'wcpv',
+				'title' => __( 'Product Vendors', 'woocommerce-product-vendors' ),
+			)
+		);
+
+		Menu::add_plugin_item(
+			array(
+				'id'         => 'wcpv-commissions',
+				'title'      => __( 'Commission', 'woocommerce-product-vendors' ),
+				'capability' => 'manage_vendors',
+				'url'        => 'admin.php?page=wcpv-commissions',
+				'parent'     => 'wcpv',
+				'order'      => 1,
+			)
+		);
+
+		$vendor_taxonomy_items = Menu::get_taxonomy_items(
+			WC_PRODUCT_VENDORS_TAXONOMY,
+			array(
+				'parent' => 'wcpv',
+				'order'  => 2,
+			)
+		);
+
+		Screen::register_taxonomy( WC_PRODUCT_VENDORS_TAXONOMY );
+		Menu::add_plugin_item( $vendor_taxonomy_items['default'] );
 	}
 
 	/**
@@ -1793,6 +1955,7 @@ class WC_Product_Vendors_Store_Admin {
 	public function add_debug_tool( $tools ) {
 		if ( ! empty( $_GET['action'] ) && 'wcpv_clear_transients' === $_GET['action'] && version_compare( WC_VERSION, '3.0', '<' ) ) {
 			WC_Product_Vendors_Utils::clear_reports_transients();
+			WC_Product_Vendors_Utils::clear_vendor_error_list_transient();
 
 			echo '<div class="updated"><p>' . esc_html__( 'Product Vendor Transients Cleared', 'woocommerce-product-vendors' ) . '</p></div>';
 		}

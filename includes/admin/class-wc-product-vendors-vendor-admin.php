@@ -37,6 +37,9 @@ class WC_Product_Vendors_Vendor_Admin {
 	public static function init() {
 		self::$self = new self();
 
+		// Disable WC Admin features as it is not needed for vendors.
+		add_filter( 'woocommerce_admin_features', array( self::$self, 'disable_wc_admin_features' ), 20 );
+
 		// add a vendor switcher to the admin bar
 		add_action( 'admin_bar_menu', array( self::$self, 'add_vendor_switcher' ) );
 
@@ -182,6 +185,15 @@ class WC_Product_Vendors_Vendor_Admin {
 		return true;
 	}
 
+	/**
+	 * Disables WC Admin Features.
+	 *
+	 * @since 2.1.50
+	 * @return array Empty array of features.
+	 */
+	public function disable_wc_admin_features() {
+		return array();
+	}
 
 	/**
 	 * Checks if we need to require additional capabilities for editing other vendor's stuff.
@@ -814,6 +826,7 @@ class WC_Product_Vendors_Vendor_Admin {
 		if (
 			$current_screen &&
 			in_array( $current_screen->id, $this->filtered_page_list ) &&
+			$query->is_main_query() &&
 			WC_Product_Vendors_Utils::auth_vendor_user() ) {
 				$query->query_vars['tax_query'][] = array(
 					'taxonomy' => WC_PRODUCT_VENDORS_TAXONOMY,
@@ -1762,10 +1775,9 @@ class WC_Product_Vendors_Vendor_Admin {
 	 */
 	public function unfulfilled_products_count_bubble( $menu ) {
 		if ( WC_Product_Vendors_Utils::auth_vendor_user() ) {
-			$count = $this->unfulfilled_products_count();
-
 			foreach ( $menu as $menu_key => $menu_data ) {
 				if ( 'wcpv-vendor-orders' === $menu_data[2] ) {
+					$count = $this->unfulfilled_products_count();
 					$menu[ $menu_key ][0] .= ' <span class="update-plugins count-' . esc_attr( absint( $count ) ) . '" title="' . esc_attr__( 'Products awaiting fulfillment', 'woocommerce-product-vendors' ) . '"><span class="plugin-count">' . number_format_i18n( $count ) . '</span></span>';
 				}
 			}

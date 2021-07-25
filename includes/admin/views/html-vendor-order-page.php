@@ -13,9 +13,9 @@ $timezone = ! empty( $vendor_data['timezone'] ) ? sanitize_text_field( $vendor_d
 					<div class="inside">
 						<h2><?php esc_html_e( 'Order Notes', 'woocommerce-product-vendors' ); ?></h2>
 						<?php $this->order_notes->output( $post ); ?>
-					</div><!--.inside-->
-				</div><!--#woocommerce-order-notes-->
-			</div><!--#postbox-container-1-->
+					</div><!-- .inside -->
+				</div><!-- #woocommerce-order-notes -->
+			</div><!-- #postbox-container-1 -->
 
 			<div id="postbox-container-2" class="postbox-container">
 				<div id="woocommerce-order-data" class="postbox">
@@ -36,7 +36,7 @@ $timezone = ! empty( $vendor_data['timezone'] ) ? sanitize_text_field( $vendor_d
 										<p class="form-field form-field-wide wc-order-status"><label for="order_status"><?php esc_html_e( 'Order status:', 'woocommerce-product-vendors' ) ?></label>
 
 										<span class="wcpv-order-status-<?php echo esc_attr( $order->get_status() ); ?>"><?php echo esc_html( WC_Product_Vendors_Utils::format_order_status( $order->get_status() ) ); ?></span></p>
-									</div><!--.order_data_column-->
+									</div><!-- .order_data_column -->
 
 									<div class="order_data_column">
 										<h4><?php esc_html_e( 'Billing Details', 'woocommerce-product-vendors' ); ?></h4>
@@ -61,7 +61,7 @@ $timezone = ! empty( $vendor_data['timezone'] ) ? sanitize_text_field( $vendor_d
 												<?php echo $address['phone']; ?>
 											</p>
 										</div>
-									</div><!--.order_data_column-->
+									</div><!-- .order_data_column -->
 
 									<div class="order_data_column">
 										<h4><?php esc_html_e( 'Shipping Details', 'woocommerce-product-vendors' ); ?></h4>
@@ -73,20 +73,33 @@ $timezone = ! empty( $vendor_data['timezone'] ) ? sanitize_text_field( $vendor_d
 												echo '<p class="none_set"><strong>' . esc_html__( 'Address', 'woocommerce-product-vendors' ) . ':</strong> ' . esc_html__( 'No shipping address set.', 'woocommerce-product-vendors' ) . '</p>';
 											}
 
-											$address = $order->get_address();
+											$address       = $order->get_address();
+											$customer_note = $order->get_customer_note();
 
+											/**
+											 * Check if order notes are enabled.
+											 *
+											 * @since 2.1.52
+											 * @param boolean $enabled Whether order notes are enabled.
+											 */
+											if (
+												apply_filters( 'woocommerce_enable_order_notes_field', 'yes' === get_option( 'woocommerce_enable_order_comments', 'yes' ) )
+												&& $customer_note
+											) {
+												echo '<p class="order_note"><strong>' . esc_html__( 'Customer provided note:', 'woocommerce-product-vendors' ) . '</strong> ' . wp_kses_post( nl2br( wptexturize( $customer_note ) ) ) . '</p>';
+											}
 											?>
 										</div>
-									</div><!--.order_data_column-->
+									</div><!-- .order_data_column -->
 
 									<?php do_action( 'wcpv_vendor_order_detail_order_data_column', $order ); ?>
-								</div><!--.order_data_column_container-->
+								</div><!-- .order_data_column_container -->
 
 								<div class="clear"></div>
-							</div><!--.panel-->
-						</div><!--.panel-wrap-->
-					</div><!--.inside-->
-				</div><!--.postbox-->
+							</div><!-- .panel -->
+						</div><!-- .panel-wrap -->
+					</div><!-- .inside -->
+				</div><!-- .postbox -->
 
 				<div id="woocommerce-order-items" class="postbox">
 					<h2><span><?php esc_html_e( 'Order Items', 'woocommerce-product-vendors' ); ?></span></h2>
@@ -100,15 +113,15 @@ $timezone = ! empty( $vendor_data['timezone'] ) ? sanitize_text_field( $vendor_d
 										<input type="hidden" name="page" value="wcpv-vendor-order&id=<?php echo esc_attr( $order_id ); ?>" />
 										<?php $order_list->display(); ?>
 									</form>
-								</div><!--.order_data_column_container-->
+								</div><!-- .order_data_column_container -->
 
 								<div class="clear"></div>
-							</div><!--.panel-->
-						</div><!--.panel-wrap-->
-					</div><!--.inside-->
-				</div><!--.postbox-->
-			</div><!--#postbox-container-2-->
-		</div><!--#post-body-->
+							</div><!-- .panel -->
+						</div><!-- .panel-wrap -->
+					</div><!-- .inside -->
+				</div><!-- .postbox -->
+			</div><!-- #postbox-container-2 -->
+		</div><!-- #post-body -->
 		<br class="clear" />
-	</div><!--#poststuff-->
-</div><!--.wrap-->
+	</div><!-- #poststuff -->
+</div><!-- .wrap -->

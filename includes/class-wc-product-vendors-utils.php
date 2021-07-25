@@ -231,7 +231,7 @@ class WC_Product_Vendors_Utils {
 			$vendor_data['count']            = $vendor_term->count;
 		}
 
-		return $vendor_data;
+		return apply_filters( 'wcpv_get_vendor_data_by_id', $vendor_data, $vendor_id );
 	}
 
 	/**
@@ -623,7 +623,7 @@ class WC_Product_Vendors_Utils {
 	 * @param string $format The format string for the returned date (default is Y-m-d H:i:s)
 	 * @return string Formatted date relative to the timezone / GMT offset.
 	 */
-	public static function get_date_from_gmt( $string, $format = 'Y-m-d H:i:s', $timezone_string ) {
+	public static function get_date_from_gmt( $string, $format, $timezone_string ) {
 		$tz = $timezone_string;
 
 		if ( empty( $timezone_string ) ) {
@@ -752,6 +752,18 @@ class WC_Product_Vendors_Utils {
 	}
 
 	/**
+	 * Gets the list of all vendors, even those without products
+	 *
+	 * @access public
+	 * @since 2.1.54
+	 * @version 2.1.54
+	 * @return array
+	 */
+	public static function get_all_vendors() {
+		return get_terms( array( 'taxonomy' => WC_PRODUCT_VENDORS_TAXONOMY, 'hide_empty' => false ) );
+	}
+
+	/**
 	 * Gets product settings related to vendors.
 	 *
 	 * @param WC_Product $product Product Object.
@@ -794,6 +806,16 @@ class WC_Product_Vendors_Utils {
 	 * @return array mixed
 	 */
 	public static function get_product_commission( $product_id, $vendor_data ) {
+		if ( ! $vendor_data || empty( $vendor_data['commission_type'] ) ) {
+			$default_commission_type = get_option( 'wcpv_vendor_settings_default_commission_type' );
+
+			if ( is_array( $vendor_data ) ) {
+				$vendor_data['commission_type'] = $default_commission_type;
+			} else {
+				$vendor_data = array( 'commission_type' => $default_commission_type );
+			}
+		}
+
 		$product = wc_get_product( $product_id );
 
 		// check if product is a variation
@@ -824,7 +846,7 @@ class WC_Product_Vendors_Utils {
 
 		// if no commission is set in variation or parent product level
 		// check commission from vendor level
-		if ( is_numeric( $vendor_data['commission'] ) ) {
+		if ( isset( $vendor_data['commission'] ) && is_numeric( $vendor_data['commission'] ) ) {
 			return array( 'commission' => $vendor_data['commission'], 'type' => $vendor_data['commission_type'] );
 		}
 
@@ -880,7 +902,7 @@ class WC_Product_Vendors_Utils {
 			}
 		}
 
-		return $vendor_data;
+		return apply_filters( 'wcpv_get_vendors_from_order', $vendor_data, $order );
 	}
 
 	/**
@@ -893,6 +915,10 @@ class WC_Product_Vendors_Utils {
 	 * @return array $query
 	 */
 	public static function convert2string( $query ) {
+		$query = array_map( function( $entry ) {
+			return '"' . str_replace( '"', '""', $entry ) . '"';
+		}, $query );
+
 		return implode( ',', $query );
 	}
 
@@ -1323,6 +1349,17 @@ class WC_Product_Vendors_Utils {
 	 */
 	public static function clear_out_of_stock_transient() {
 		delete_transient( 'wcpv_reports_wg_nostock_' . self::get_logged_in_vendor() );
+	}
+
+	/**
+	 * Clear out the vendor error list transient.
+	 *
+	 * @access public
+	 * @since 2.1.54
+	 * @version 2.1.54
+	 */
+	public static function clear_vendor_error_list_transient() {
+		delete_transient( 'wcpv_vendor_error_list' );
 	}
 
 	/**

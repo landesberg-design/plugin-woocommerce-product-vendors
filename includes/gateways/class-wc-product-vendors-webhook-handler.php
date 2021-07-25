@@ -25,6 +25,16 @@ class WC_Product_Vendors_Webhook_Handler {
 	private $webhook_id;
 
 	/**
+	 * Number of minutes to wait before trying to create a Webhook handler.
+	 */
+	const WEBHOOK_DEFAULT_WAIT_TIME = 1;
+
+	/**
+	 * Name for the option when a Webhook failure occurs.
+	 */
+	const WEBHOOK_FAILURE_STATE = 'wcpv_webhook_failure_state';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 2.0.35
@@ -122,9 +132,12 @@ class WC_Product_Vendors_Webhook_Handler {
 	 * @version 2.0.35
 	 */
 	public function maybe_create_webhook() {
-		if ( empty( $this->webhook_id ) ) {
-			$this->create_webhook();
+		if ( ! empty( $this->webhook_id ) || false !== get_transient( self::WEBHOOK_FAILURE_STATE ) ) {
+			// Transient still exists and it is in the failure state.
+			return;
 		}
+
+		$this->create_webhook();
 	}
 
 	/**
@@ -164,8 +177,20 @@ class WC_Product_Vendors_Webhook_Handler {
 			$created_webhook = $webhook->create( $this->apiContext );
 			WC_Product_Vendors_Logger::log( 'Webhook Created! ' . $created_webhook->id );
 			$this->save_webhook_id( $created_webhook->id );
+
+			// Remove transient from the failure state.
+			delete_transient( self::WEBHOOK_FAILURE_STATE );
 		} catch ( Exception $e ) {
-			WC_Product_Vendors_Logger::log( $e->getMessage() );
+			// Set transient to the failure state.
+			set_transient( self::WEBHOOK_FAILURE_STATE, true, self::WEBHOOK_DEFAULT_WAIT_TIME * MINUTE_IN_SECONDS );
+
+			$message = $e->getMessage();
+
+			if ( is_a( $e, 'PayPal\Exception\PayPalConnectionException' ) ) {
+				$message .= ' Error details: ' . $e->getData();
+			};
+
+			WC_Product_Vendors_Logger::log( $message );
 		}
 	}
 
@@ -270,15 +295,15 @@ class WC_Product_Vendors_Webhook_Handler {
 	 * @param string $request_body
 	 */
 	public function process_webhook( $request_body = null ) {
-		WC_Product_Vendors_Logger::log( 'Received webhook from PayPal. ');		
+		WC_Product_Vendors_Logger::log( 'Received webhook from PayPal. ');
 		if ( null === $request_body ) {
-			WC_Product_Vendors_Logger::log( 'PayPal Masspay Payout error: received empty response. ');		
+			WC_Product_Vendors_Logger::log( 'PayPal Masspay Payout error: received empty response. ');
 			status_header( 400 );
 			exit;
 		}
 
 		$notification = json_decode( $request_body );
-		WC_Product_Vendors_Logger::log( 'Received message: ' . print_r ( $notification, true ) );	
+		WC_Product_Vendors_Logger::log( 'Received message: ' . print_r ( $notification, true ) );
 
 		if ( 'PAYMENT.PAYOUTSBATCH.DENIED' === $notification->event_type ) {
 			WC_Product_Vendors_Logger::log( 'PayPal Masspay Batch Payouts Denied: ' . $notification->summary );
