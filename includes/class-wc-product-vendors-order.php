@@ -487,4 +487,5 @@ class WC_Product_Vendors_Order {
 	public function payment_complete( $order_id ) {
 		WC_Product_Vendors_Utils::clear_reports_transients();
 	}
+
 }
