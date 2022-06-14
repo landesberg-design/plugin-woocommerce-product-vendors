@@ -1,5 +1,5 @@
 {
-    "name": "not-a-robot-agency/woocommerce-product-vendors",
+    "name": "landesberg-design/woocommerce-product-vendors",
     "type": "wordpress-plugin",
     "description": "",
     "require": {
@@ -7,8 +7,7 @@
     },
     "authors": [
         {
-            "name": "Chris Jezowicz",
-            "email": "me@chrisjezowicz.com"
+            "name": "WooCommerce"
         }
     ]
 }
