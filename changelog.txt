@@ -1,5 +1,62 @@
 *** Product Vendors Changelog ***
 
+2022-10-11 - version 2.1.67
+* Fix - Ensure the orders page in the vendor dashboard is responsive.
+
+2022-09-29 - version 2.1.66
+* Add - Ability to edit email for vendor support.
+* Add - Address, email, and phone number in the vendor order email.
+* Dev - remove node_modules from production package.
+* Fix - Adding Order Notes workflow.
+* Fix - Deleting vendors leads to a broken admin issue.
+* Fix - Fulfillment status workflow.
+* Fix - Improve checkout validation.
+* Fix - Reports -> Vendors select2 placeholder gets wiped and displays "undefined".
+* Fix - Undefined warning related to 'tinymce'.
+* Fix - Users not being created when manually adding a vendor.
+* Fix - Vendor Gets Out of Stock and Low Stock Emails when setting is disabled.
+* Fix - Vendor Profile doesn't save when Vendor created.
+* Tweak - Add support for Custom Order Table implementation.
+* Tweak - Bump PHP minimum to 7.0.
+* Tweak - Bump WC minimum to 6.0.
+* Tweak - Bump WP minimum to 5.6.
+* Update - Remove filters after sending emails in vendor order email to vendor.
+
+2022-08-23 - version 2.1.65
+* Fix: Vendor registration confirmation message is outside viewport.
+* Tweak - WC 6.8.0 compatibility.
+
+2022-08-10 - version 2.1.64
+* Fix - Ensure Vendors can edit their attachment details.
+* Fix - Fixed return type of get_product_commission.
+* Fix: Video not playing on vendor profile.
+* Fixed: Product counts removal regex for vendor dashboard.
+
+2022-07-28 - version 2.1.63
+* Fix - Add proper username validation for vendor registration.
+* Fix - Ensure the vendor email is properly added to the vendor account when using an existing user.
+* Fix - Incorrectly accessed billing_email value.
+* Fix: Vendor order email notification for deposit orders.
+* Fixed - Ensure WooCommerce Subscriptions renewal order emails get sent to vendors.
+* Fixed: Product SKU not showing on vendor commission list issue.
+* Fixed: Timestamp mismatch between commission list and order details page in wp-admin.
+* Fixed: Timestamp mismatch between order list and order details page in Vendor dashboard.
+* Tweak - Added new custom hooks to the vendor order details page.
+* Tweak - WC 6.7.0 compatibility.
+
+2022-07-06 - version 2.1.62
+* Add - Implement support for automatic translation files delivery.
+
+2022-05-26 - version 2.1.61
+* Fix - Ensure Vendor Managers do not see the "Sales summary" section on the dashboard.
+* Tweak - Bump tested up to WordPress version 6.0.
+
+2022-05-12 - version 2.1.60
+* Fix - Modify column content only when the column slug is `vendors` in user list table.
+
+2022-03-25 - version 2.1.59
+* Fix - Vendors can't sort bookings by date.
+
 2021-11-30 - version 2.1.58
 * Fix - check if `wp_get_object_terms` response is `WP_Error`.
 * Tweak - WC 5.9 compatibility.

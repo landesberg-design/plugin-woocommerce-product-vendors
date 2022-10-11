@@ -330,7 +330,14 @@ class WC_Product_Vendors_Vendor_Orders_List extends WP_List_Table {
 			'fulfillment_status'      => __( 'Fulfillment Status', 'woocommerce-product-vendors' ),
 		);
 
-		return $columns;
+		/**
+		 * Filters the order list table columns in Vendor dashboard
+		 *
+		 * @since 2.1.62
+		 *
+		 * @param array $columns Order list table columns.
+		 */
+		return apply_filters( 'wcpv_manage_vendor_shop_order_posts_columns', $columns );
 	}
 
 	/**
@@ -377,9 +384,11 @@ class WC_Product_Vendors_Vendor_Orders_List extends WP_List_Table {
 				return sprintf( '<span class="wcpv-order-status-%s">%s</span>', esc_attr( $raw_status ), $order_status );
 
 			case 'order_date' :
+				if ( ! is_a( $order, 'WC_Order' ) || ! $order->get_date_created() ) {
+					return __( 'N/A', 'woocommerce-product-vendors' );
+				}
 				$timezone = ! empty( $this->vendor_data['timezone'] ) ? sanitize_text_field( $this->vendor_data['timezone'] ) : '';
-
-				return WC_Product_Vendors_Utils::format_date( sanitize_text_field( $item->order_date ), $timezone );
+				return WC_Product_Vendors_Utils::format_date( gmdate( 'Y-m-d H:i:s', $order->get_date_created()->getTimestamp() ), $timezone );
 
 			case 'shipping_address' :
 				if ( ! is_a( $order, 'WC_ORDER' ) ) {
@@ -414,71 +423,30 @@ class WC_Product_Vendors_Vendor_Orders_List extends WP_List_Table {
 
 				// check if product is a variable product
 				if ( ! empty( $item->variation_id ) ) {
-					$product = wc_get_product( absint( $item->variation_id ) );
-
-					if ( version_compare( WC_VERSION, '3.0.0', '>=' ) ) {
-						$order_item = WC_Order_Factory::get_order_item( $item->order_item_id );
-						
-						if ( $metadata = $order_item->get_formatted_meta_data() ) {
-							foreach ( $metadata as $meta_id => $meta ) {
-								// Skip hidden core fields
-								if ( in_array( $meta->key, apply_filters( 'wcpv_hidden_order_itemmeta', array(
-									'_qty',
-									'_tax_class',
-									'_product_id',
-									'_variation_id',
-									'_line_subtotal',
-									'_line_subtotal_tax',
-									'_line_total',
-									'_line_tax',
-									'_fulfillment_status',
-									'_commission_status',
-									'method_id',
-									'cost',
-								) ) ) ) {
-									continue;
-								}
-
-								$var_attributes .= sprintf( __( '<br /><small>( %1$s: %2$s )</small>', 'woocommerce-product-vendors' ), wp_kses_post( rawurldecode( $meta->display_key ) ), wp_kses_post( $meta->value ) );
+					$product    = wc_get_product( absint( $item->variation_id ) );
+					$order_item = WC_Order_Factory::get_order_item( $item->order_item_id );
+					
+					if ( $metadata = $order_item->get_formatted_meta_data() ) {
+						foreach ( $metadata as $meta_id => $meta ) {
+							// Skip hidden core fields
+							if ( in_array( $meta->key, apply_filters( 'wcpv_hidden_order_itemmeta', array(
+								'_qty',
+								'_tax_class',
+								'_product_id',
+								'_variation_id',
+								'_line_subtotal',
+								'_line_subtotal_tax',
+								'_line_total',
+								'_line_tax',
+								'_fulfillment_status',
+								'_commission_status',
+								'method_id',
+								'cost',
+							) ) ) ) {
+								continue;
 							}
-						}
-					} else {
-						if ( $metadata = $order->has_meta( $item->order_item_id ) ) {
-							foreach ( $metadata as $meta ) {
-								// Skip hidden core fields
-								if ( in_array( $meta['meta_key'], apply_filters( 'wcpv_hidden_order_itemmeta', array(
-									'_qty',
-									'_tax_class',
-									'_product_id',
-									'_variation_id',
-									'_line_subtotal',
-									'_line_subtotal_tax',
-									'_line_total',
-									'_line_tax',
-									'_fulfillment_status',
-									'_commission_status',
-									'method_id',
-									'cost',
-								) ) ) ) {
-									continue;
-								}
 
-								// Skip serialised meta
-								if ( is_serialized( $meta['meta_value'] ) ) {
-									continue;
-								}
-
-								// Get attribute data
-								if ( taxonomy_exists( wc_sanitize_taxonomy_name( $meta['meta_key'] ) ) ) {
-									$term               = get_term_by( 'slug', $meta['meta_value'], wc_sanitize_taxonomy_name( $meta['meta_key'] ) );
-									$meta['meta_key']   = wc_attribute_label( wc_sanitize_taxonomy_name( $meta['meta_key'] ) );
-									$meta['meta_value'] = isset( $term->name ) ? $term->name : $meta['meta_value'];
-								} else {
-									$meta['meta_key']   = wc_attribute_label( $meta['meta_key'], $product );
-								}
-
-								$var_attributes .= sprintf( __( '<br /><small>( %1$s: %2$s )</small>', 'woocommerce-product-vendors' ), wp_kses_post( rawurldecode( $meta['meta_key'] ) ), wp_kses_post( $meta['meta_value'] ) );
-							}
+							$var_attributes .= sprintf( __( '<br /><small>( %1$s: %2$s )</small>', 'woocommerce-product-vendors' ), wp_kses_post( rawurldecode( $meta->display_key ) ), wp_kses_post( $meta->value ) );
 						}
 					}
 				} else {
@@ -505,6 +473,9 @@ class WC_Product_Vendors_Vendor_Orders_List extends WP_List_Table {
 				}
 
 			case 'total_commission_amount' :
+				if ( ! is_a( $order, 'WC_Order' ) ) {
+					return __( 'N/A', 'woocommerce-product-vendors' );
+				}
 				$refund          = '';
 				$refunded_amount = $order->get_total_refunded_for_item( intval( $item->order_item_id ) );
 
@@ -553,7 +524,16 @@ class WC_Product_Vendors_Vendor_Orders_List extends WP_List_Table {
 				return $status;
 
 			default :
-				return print_r( $item, true );
+				/**
+				 * Filters the order list-table custom column content in vendor dashboard.
+				 *
+				 * @since 2.1.62
+				 *
+				 * @param string column content.
+				 * @param string $column_name Column name.
+				 * @param int    $order_id    Order ID.
+				 */
+				return apply_filters( 'wcpv_manage_vendor_shop_order_posts_custom_column', print_r( $item, true ), $column_name, absint( $item->order_id ) );
 		}
 	}
 
@@ -649,19 +629,25 @@ class WC_Product_Vendors_Vendor_Orders_List extends WP_List_Table {
 		}
 
 		$status = sanitize_text_field( $this->current_action() );
+		if ( ! in_array( $status, array( 'fulfilled', 'unfulfilled' ), true ) ) {
+			return;
+		}
 
 		$ids = array_map( 'absint', $_REQUEST['ids'] );
 
 		$processed = 0;
+		foreach ( $ids as $order_item_id ) {
+			if ( ! WC_Product_Vendors_Utils::can_logged_in_user_manage_order_item( $order_item_id ) ) {
+				continue;
+			}
 
-		foreach ( $ids as $id => $order_item_id ) {
-			WC_Product_Vendors_Utils::set_fulfillment_status( absint( $order_item_id ), $this->current_action() );
+			WC_Product_Vendors_Utils::set_fulfillment_status( $order_item_id, $status );
 
 			// Maybe update order status when product vendor is fulfilled or unfulfilled.
 			$order = WC_Product_Vendors_Utils::get_order_by_order_item_id( $order_item_id );
-			WC_Product_Vendors_Utils::maybe_update_order( $order, $this->current_action() );
+			WC_Product_Vendors_Utils::maybe_update_order( $order, $status );
 
-			WC_Product_Vendors_Utils::send_fulfill_status_email( $this->vendor_data, $this->current_action(), $order_item_id );
+			WC_Product_Vendors_Utils::send_fulfill_status_email( $this->vendor_data, $status, $order_item_id );
 
 			$processed++;
 		}

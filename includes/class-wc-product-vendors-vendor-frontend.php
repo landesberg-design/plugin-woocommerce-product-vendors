@@ -138,13 +138,8 @@ class WC_Product_Vendors_Vendor_Frontend {
 		$sold_by = get_option( 'wcpv_vendor_settings_display_show_by', 'yes' );
 
 		if ( 'yes' === $sold_by ) {
-			if ( version_compare( WC_VERSION, '3.0.0', '>=' ) ) {
-				$product_id = $cart_item['product_id'];
-			} else {
-				$product_id = $cart_item['data']->id;
-			}
-
-			$sold_by = WC_Product_Vendors_Utils::get_sold_by_link( $product_id );
+			$product_id = $cart_item['product_id'];
+			$sold_by    = WC_Product_Vendors_Utils::get_sold_by_link( $product_id );
 
 			$values[] = array(
 				'name' => apply_filters( 'wcpv_sold_by_text', esc_html__( 'Sold By', 'woocommerce-product-vendors' ) ),
@@ -177,6 +172,29 @@ class WC_Product_Vendors_Vendor_Frontend {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Add supported tag in profile section
+	 * 
+	 * @return array
+	 */
+	public function kses_allowed_html( $allowed_tags, $context ) {
+		$tags       = array( 'video', 'audio', 'source' );
+		$attributes = array( 'class', 'id', 'aria-*', 'style', 'role', 'data-*', 'src', 'width', 'height', 'preload', 'controls', 'muted' );
+
+		// Assign true to attributes
+		$tag_attributes = array();
+		foreach ( $attributes as $attribute ) {
+			$tag_attributes[ $attribute ] = true;
+		}
+
+		// Assign attributes to tags
+		foreach ( $tags as $tag ) {
+			$allowed_tags[ $tag ] = $tag_attributes;
+		}
+
+		return $allowed_tags;
 	}
 
 	/**
@@ -214,8 +232,9 @@ class WC_Product_Vendors_Vendor_Frontend {
 
 			// profile
 			if ( ! empty( $vendor_data['profile'] ) && 'yes' === get_option( 'wcpv_vendor_settings_vendor_display_profile', 'yes' ) ) {
-
+				add_filter( 'wp_kses_allowed_html', array( $this, 'kses_allowed_html' ), 10, 2 );
 				echo '<div class="wcpv-vendor-profile entry-summary">' . wpautop( wp_kses_post( do_shortcode( $vendor_data['profile'] ) ) ) . '</div>' . PHP_EOL;
+				remove_filter( 'wp_kses_allowed_html', array( $this, 'kses_allowed_html' ) );
 			}
 		}
 
