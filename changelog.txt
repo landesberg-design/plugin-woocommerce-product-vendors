@@ -1,5 +1,27 @@
 *** Product Vendors Changelog ***
 
+2022-12-13 - version 2.1.70
+* Fix - Compatibility issue with Custom Order Status for WooCommerce plugin.
+* Fix - Other vendor global store availability rules apply on product booking page for logged-in vendor.
+* Update - Fetch vendor data only if current user is a vendor.
+* Update - Set current vendor if not set in usermeta.
+
+2022-11-17 - version 2.1.69
+* Add - Local development instructions and `wp-env` support.
+* Dev - Update node version from 8.9.3 to 16.13.0.
+* Dev - Update npm version from 5.5.1 to 8.0.0.
+* Fix - Improve validation of Vendor store settings.
+* Tweak - WC 7.1.0 compatibility.
+
+2022-11-01 - version 2.1.68
+* Declare support for HPOS.
+* Dev - Add support for node 16 and npm 8.
+* Fix - Compatibility issues with WooCommerce Deposits.
+* Fix - Per product shipping rules import issue when a vendor is selected.
+* Fix - Plugin assets now work via symlink.
+* Fix - Vendors links use common permalink base.
+* Tweak - Performance improvements for Bookings calendar and Bookings API.
+
 2022-10-11 - version 2.1.67
 * Fix - Ensure the orders page in the vendor dashboard is responsive.
 
