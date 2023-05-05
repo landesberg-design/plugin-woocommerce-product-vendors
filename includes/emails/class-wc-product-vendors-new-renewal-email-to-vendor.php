@@ -3,71 +3,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
+/**
+ * Handles "New Renewal Email (Vendor)" email notification.
+ *
+ * @since 2.1.70
+ */
+class WC_Product_Vendors_New_Renewal_Email_To_Vendor extends WC_Email {
 	/**
 	 * Constructor
-	 *
-	 * @since 2.1.70 Move subscription renewal email notification related code to WC_Product_Vendors_Order_Email_To_Vendor.
 	 *
 	 * @access public
 	 * @return bool
 	 */
 	public function __construct() {
-		$this->id               = 'order_email_to_vendor';
-		$this->title            = __( 'Order Email (Vendor)', 'woocommerce-product-vendors' );
-		$this->description      = __( 'When an order is placed with vendor products, this email will be sent out to the vendors.', 'woocommerce-product-vendors' );
+		$this->id               = 'new_renewal_email_to_vendor';
+		$this->title            = __( 'New Renewal Email (Vendor)', 'woocommerce-product-vendors' );
+		$this->description      = __( 'When a subscription renewal order is placed with vendor products, this email will be sent out to the vendors.', 'woocommerce-product-vendors' );
 
-		$this->heading          = __( 'New Customer Order', 'woocommerce-product-vendors' );
-		$this->subject          = __( '[{site_title}] New customer order ({order_number}) - {order_date}', 'woocommerce-product-vendors' );
+		$this->heading          = __( 'New Subscription Renewal Order', 'woocommerce-product-vendors' );
+		$this->subject          = __( '[{site_title}] New subscription renewal order ({order_number}) - {order_date}', 'woocommerce-product-vendors' );
 
 		$this->template_base    = WC_PRODUCT_VENDORS_TEMPLATES_PATH;
-		$this->template_html    = 'emails/order-email-to-vendor.php';
-		$this->template_plain   = 'emails/plain/order-email-to-vendor.php';
+		$this->template_html    = 'emails/new-renewal-email-to-vendor.php';
+		$this->template_plain   = 'emails/plain/renewal-email-to-vendor.php';
 
-		// Triggers for this email
-		add_action( 'woocommerce_order_status_pending_to_processing_notification', array( $this, 'trigger' ) );
-		add_action( 'woocommerce_order_status_pending_to_completed_notification', array( $this, 'trigger' ) );
-		add_action( 'woocommerce_order_status_pending_to_on-hold_notification', array( $this, 'trigger' ) );
-		add_action( 'woocommerce_order_status_failed_to_processing_notification', array( $this, 'trigger' ) );
-		add_action( 'woocommerce_order_status_failed_to_completed_notification', array( $this, 'trigger' ) );
-		add_action( 'woocommerce_order_status_failed_to_on-hold_notification', array( $this, 'trigger' ) );
+		// Subscriptions renewal order.
+		add_action( 'woocommerce_order_status_pending_to_processing_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_pending_to_completed_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_pending_to_on-hold_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_failed_to_processing_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_failed_to_completed_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_failed_to_on-hold_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_cancelled_to_processing_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_cancelled_to_completed_renewal_notification', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_cancelled_to_on-hold_renewal_notification', array( $this, 'trigger' ) );
 
-		// Add notification for deposits orders.
-		add_action( 'woocommerce_order_status_pending_to_partial-payment_notification', array( $this, 'trigger' ) );
-
-		// Call parent constructor
+		// Call parent constructor.
 		parent::__construct();
 
 		return true;
-	}
-
-	/**
-	 * Function to append email ID and phone number to address.
-	 *
-	 * @param string $address     Formatted address.
-	 * @param array  $raw_address Raw address.
-	 *
-	 * @return mixed|string
-	 */
-	public function formatted_address( $address, $raw_address ) {
-
-		/**
-		 * Filters if email and phone of the customer should be removed from vendor email.
-		 *
-		 * @since 2.1.62
-		 *
-		 * @param bool $remove Remove email and phone from email.
-		 */
-		if ( ! apply_filters( 'wcpv_order_email_to_vendor_remove_email_phone', false ) ) {
-			if ( array_key_exists( 'phone', $raw_address ) && ! empty( $raw_address['phone'] ) ) {
-				$address .= '<br/>' . wc_make_phone_clickable( $raw_address['phone'] );
-			}
-			if ( array_key_exists( 'email', $raw_address ) && ! empty( $raw_address['email'] ) ) {
-				$address .= '<br/>' . esc_html( $raw_address['email'] );
-			}
-		}
-
-		return $address;
 	}
 
 	/**
@@ -83,12 +57,11 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 		}
 
 		if ( $order_id ) {
-
 			$this->object = wc_get_order( $order_id );
 			$order_date   = $this->object->get_date_created();
 
-			$this->find['order-date']      = '{order_date}';
-			$this->find['order-number']    = '{order_number}';
+			$this->find['order-date']   = '{order_date}';
+			$this->find['order-number'] = '{order_number}';
 
 			$this->replace['order-date']   = date_i18n( wc_date_format(), strtotime( $order_date ) );
 			$this->replace['order-number'] = $this->object->get_order_number();
@@ -105,8 +78,6 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 
 				add_action( 'wc_product_vendors_email_order_meta', array( $this, 'show_commission_information' ), 10 , 4 );
 
-				add_filter( 'woocommerce_order_get_formatted_billing_address', array( $this, 'formatted_address' ), 10, 2 );
-
 				$sent = false;
 
 				// Send email to each vendor.
@@ -122,19 +93,9 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 					$sent = $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
 				}
 
-				remove_filter( 'woocommerce_order_get_formatted_billing_address', array( $this, 'formatted_address' ) );
-
-				remove_action( 'wc_product_vendors_email_order_meta', array( $this, 'show_commission_information' ), 10 );
-
-				remove_filter( 'wc_get_template', array( $this, 'filter_customer_addresses' ), 10 );
-
-				remove_filter( 'woocommerce_email_customer_details_fields', array( $this, 'filter_customer_fields' ), 10 );
-
-				remove_filter( 'woocommerce_get_order_item_totals', array( $this, 'filter_order_totals' ), 10 );
-
 				if ( $sent ) {
-					// add order note that email was sent to vendor
-					$note = __( 'New Order email sent to vendor(s).', 'woocommerce-product-vendors' );
+					// Add order note that email was sent to vendor.
+					$note = __( 'New subscription renewal order email sent to vendor(s).', 'woocommerce-product-vendors' );
 
 					$this->object->add_order_note( $note );
 				}
@@ -193,7 +154,7 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 	 * @return string
 	 */
 	public function filter_order_totals( $total_rows, $order ) {
-		// don't show payment method to vendors
+		// Don't show payment method to vendors.
 		unset( $total_rows['payment_method'] );
 		unset( $total_rows['order_total'] );
 
@@ -210,7 +171,7 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 	 * @return string
 	 */
 	public function filter_customer_fields( $fields, $sent_to_admin, $order ) {
-		if ( ! apply_filters( 'wcpv_order_email_to_vendor_remove_email_phone', false ) ) {
+		if ( ! apply_filters( 'wcpv_new_renewal_email_to_vendor_remove_email_phone', false ) ) {
 			return $fields;
 		}
 
@@ -245,8 +206,6 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 	/**
 	 * Renders the order table
 	 *
-	 * @since 2.0.2
-	 * @version 2.0.2
 	 * @access public
 	 * @param object $order
 	 * @param bool $sent_to_admin
@@ -322,9 +281,6 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 	/**
 	 * Show the commission details on the order.
 	 *
-	 * @since 2.1.0
-	 * @version 2.1.3
-	 *
 	 * @param WC_Order $order
 	 * @param Boolean $sent_to_admin
 	 * @param Boolean $plain_text
@@ -348,11 +304,11 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 		<p>
 			<?php
 			/* translators: the amount in commission price */
-			echo sprintf( __( 'Your commission for this order is %s.', 'woocommerce-product-vendors' ), wc_price( $commission, array( 'currency' => get_woocommerce_currency() ) ) );
+			echo sprintf( __( 'Your commission for this subscription renewal order is %s.', 'woocommerce-product-vendors' ), wc_price( $commission, array( 'currency' => get_woocommerce_currency() ) ) );
 			?>
 		</p>
 		<?php
 	}
 }
 
-return new WC_Product_Vendors_Order_Email_To_Vendor();
+return new WC_Product_Vendors_New_Renewal_Email_To_Vendor();

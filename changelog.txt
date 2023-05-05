@@ -1,5 +1,31 @@
 *** Product Vendors Changelog ***
 
+2023-03-27 - version 2.1.76
+* Dev - Always return array in `get_vendor_data_by_id` even if there's no vendor.
+* Fix - Reporting stats for 'Last Month' are not accurate for logged-in vendor.
+
+2023-03-13 - version 2.1.75
+* Dev - Action and filter hooks to registration shortcode for existing vendors.
+
+2023-02-20 - version 2.1.74
+* Dev - Implement PHPCS GitHub Action to help improve code quality.
+* Fix - Sync vendor commission data with refunded order.
+
+2023-01-27 - version 2.1.73
+* Add - Override Per Product shipping rules on import.
+* Fix - Product tax handling is not working.
+* Fix - Regenerate vendor commission when editing order or performing "Generate Vendor Commission" action on order.
+* Tweak - Bump WordPress "tested up to" version 6.1.
+
+2023-01-17 - version 2.1.72
+* Fix - Allow zero value commissions.
+
+2022-12-20 - version 2.1.71
+* Add - Logged-out users receive a notification to log in to use the vendor registration form.
+* Add - New Subscription Renewal Order vendor email notification.
+* Fix - `Reply-to` email goes to vendor instead of admin.
+* Tweak - WC 7.2.1 compatibility.
+
 2022-12-13 - version 2.1.70
 * Fix - Compatibility issue with Custom Order Status for WooCommerce plugin.
 * Fix - Other vendor global store availability rules apply on product booking page for logged-in vendor.

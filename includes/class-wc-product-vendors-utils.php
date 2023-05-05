@@ -231,7 +231,7 @@ class WC_Product_Vendors_Utils {
 			$vendor_data['count']            = $vendor_term->count;
 		}
 
-		return apply_filters( 'wcpv_get_vendor_data_by_id', $vendor_data, $vendor_id );
+		return apply_filters( 'wcpv_get_vendor_data_by_id', $vendor_data ?? array() , $vendor_id );
 	}
 
 	/**
@@ -842,31 +842,42 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Gets product settings related to vendors.
 	 *
-	 * @param WC_Product $product Product Object.
+	 * @since 2.1.72 Return vendor setting on basis of _wcpv_customize_product_vendor_settings product setting value
+	 *
+	 * @param WC_Product $product     Product Object.
 	 * @param array|null $vendor_data Vendor Data.
 	 *
 	 * @return array
 	 */
 	public static function get_product_vendor_settings( WC_Product $product, $vendor_data = null ) {
-
 		// $pass_shipping_tax is a legacy setting, we fetch it to set the values of $pass_shipping and $pass_tax if ! empty
 		$pass_shipping_tax = $product->get_meta( '_wcpv_product_default_pass_shipping_tax', true, 'edit' );
 		$pass_shipping     = $product->get_meta( '_wcpv_product_pass_shipping', true, 'edit' );
-		$taxes         = $product->get_meta( '_wcpv_product_taxes', true, 'edit' );
+		$taxes             = $product->get_meta( '_wcpv_product_taxes', true, 'edit' );
 
-		if ( empty( $pass_shipping ) ) {
-			// Default to vendor setting then legacy setting then to 'no'.
-			$pass_shipping = ! empty( $vendor_data['pass_shipping'] ) ? $vendor_data['pass_shipping'] : ( empty( $pass_shipping_tax ) ? 'no' : $pass_shipping_tax );
-		}
+		$default_pass_shipping = ! empty( $vendor_data['pass_shipping'] ) ?
+			$vendor_data['pass_shipping'] :
+			( empty( $pass_shipping_tax ) ? 'no' : $pass_shipping_tax );
+		$default_taxes         = ! empty( $vendor_data['taxes'] ) ?
+			$vendor_data['taxes'] :
+			( ( ! empty( $pass_shipping_tax ) && 'yes' === $pass_shipping_tax ) ? 'pass-tax' : 'keep-tax' );
 
-		if ( empty( $taxes ) ) {
-			// Default to vendor setting then legacy setting then to 'keep-tax'.
-			$taxes = ! empty( $vendor_data['taxes'] ) ? $vendor_data['taxes'] : ( ! empty( $pass_shipping_tax ) && 'yes' === $pass_shipping_tax ? 'pass-tax' : 'keep-tax' );
+		$customize_product_vendor_settings = $product->get_meta(
+			'_wcpv_customize_product_vendor_settings',
+			true,
+			'edit'
+		);
+
+		if ( 'no' === $customize_product_vendor_settings ) {
+			return array(
+				'pass_shipping' => $default_pass_shipping,
+				'taxes'         => $default_taxes,
+			);
 		}
 
 		return array(
-			'pass_shipping' => $pass_shipping,
-			'taxes' => $taxes,
+			'pass_shipping' => $pass_shipping ?: $default_pass_shipping,
+			'taxes'         => $taxes ?: $default_taxes,
 		);
 	}
 
@@ -1577,5 +1588,213 @@ class WC_Product_Vendors_Utils {
 		}
 
 		return 'partial-refunded';
+	}
+
+	/**
+	 * Should return date SQL query part from date range for commission table.
+	 *
+	 * @since 2.1.76
+	 *
+	 * @param string $range      Date range type: Valid values are: year, last_month, month, 7 day (default), custom.
+	 * @param string $start_date Optional. Date after which retrieve vendor commission data. Mysql formatted date.
+	 * @param string $end_date   Optional. Date before which retrieve vendor commission data. Mysql formatted date.
+	 *
+	 * @return string
+	 */
+	public static function get_commission_date_sql_query_from_range( $range, $start_date = '', $end_date = '' ) {
+		$sql = '';
+
+		switch ( $range ) {
+			case 'year' :
+				$sql .= " AND YEAR( commission.order_date ) = YEAR( NOW() )";
+				break;
+
+			case 'last_month' :
+				$sql .= " AND MONTH( commission.order_date ) = IF( MONTH( NOW() ) = 1, 12, MONTH( NOW() ) - 1 )";
+				$sql .= " AND YEAR( commission.order_date ) = IF( MONTH( NOW() ) = 1, YEAR( NOW() ) - 1, YEAR( NOW() ) )";
+				break;
+
+			case 'month' :
+				$sql .= " AND MONTH( commission.order_date ) = MONTH( NOW() )";
+				$sql .= " AND YEAR( commission.order_date ) = YEAR( NOW() )";
+				break;
+
+			case 'custom' :
+				$sql .= " AND DATE( commission.order_date ) BETWEEN '" . $start_date . "' AND '" . $end_date . "'";
+				break;
+
+			case '7day' :
+			case 'default' :
+				$sql .= " AND DATE( commission.order_date ) BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW()";
+				break;
+		}
+
+		return $sql;
+	}
+
+	/**
+	 * Should return boolean value for date validation result.
+	 *
+	 * @since 2.1.76
+	 *
+	 * @param string $date Mysql formatted date,
+	 *
+	 * @return bool
+	 */
+	public static function is_valid_mysql_formatted_date( $date ) {
+		try {
+			$dateTime = new \DateTime( $date );
+		} catch ( \Exception $e ) {
+			return false;
+		}
+
+		return $dateTime->format( 'Y-m-d' ) === $date;
+	}
+
+	/* * Calculate the total tax refunded for a line item.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param WC_Order_Item $item  Order item id.
+	 * @param WC_Order      $order Order.
+	 *
+	 * @return float
+	 */
+	public static function get_total_tax_refunded_line_item( WC_Order_Item $item, WC_Order $order ) {
+		$tax_items          = $item->get_taxes()['total'];
+		$total_tax_refunded = 0;
+		foreach ( $tax_items as $key => $tax_item ) {
+			$total_tax_refunded += $order->get_tax_refunded_for_item( $item->get_id(), $key );
+		}
+
+		return $total_tax_refunded;
+	}
+
+	/**
+	 * Gets the count of order items (only need shipping).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param WC_Order $order Order object.
+	 *
+	 * @return int
+	 */
+	public static function get_item_count_need_with_shipping( WC_Order $order ) {
+		$items = $order->get_items();
+		$count = 0;
+
+		foreach ( $items as $item ) {
+			$product = wc_get_product( $item['product_id'] );
+
+			if ( $product->needs_shipping() ) {
+				$count += $item->get_quantity();
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Gets the count of refunded order items (only need shipping).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param WC_Order $order Order object.
+	 *
+	 * @return int
+	 */
+	public static function get_total_qty_refunded_with_need_shipping( WC_Order $order ) {
+		/* @var WC_Order_Refund[] $refunds */
+		$refunds = $order->get_refunds();
+		$count   = 0;
+
+		foreach ( $refunds as $refund ) {
+			$items = $refund->get_items();
+			foreach ( $items as $item ) {
+				$product = wc_get_product( $item['product_id'] );
+
+				if ( $product->needs_shipping() ) {
+					$count += ( $item->get_quantity() * - 1 );
+				}
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Calculate the total shipping charges for refunded order item.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array
+	 */
+	public static function get_total_order_item_shipping_charges_with_refund( WC_Order_Item $item ) {
+		$shipping_charges = [
+			'taxes'         => 0,
+			'shipping_cost' => 0
+		];
+
+		$product = wc_get_product( $item['product_id'] );
+
+		if( ! $product->needs_shipping() ) {
+			return  $shipping_charges;
+		}
+
+		$order                       = $item->get_order();
+		$total_order_qty_with_refund = self::get_item_count_need_with_shipping($order) - self::get_total_qty_refunded_with_need_shipping($order);
+		$total_item_with_with_refund = $item->get_quantity() + $order->get_qty_refunded_for_item( $item->get_id() );
+
+		$pp_shipping_title = get_option( 'woocommerce_wcpv_per_product_settings', '' );
+		$pp_shipping_title = ! empty( $pp_shipping_title ) ? $pp_shipping_title['title'] : '';
+
+		// "Per Product Shipping" shipping method should charge for order.
+		if ( ! $pp_shipping_title || ! $order->get_shipping_method() ) {
+			return $shipping_charges;
+		}
+
+		// Get total refunded shipping changes (Only per product shipping charges).
+		foreach ( $order->get_refunds() as $refund ) {
+			foreach ( $refund->get_shipping_methods() as $refunded_shipping_method ) {
+				if ( $pp_shipping_title !== $refunded_shipping_method->get_name() ) {
+					continue;
+				}
+
+				$shipping_charges['taxes']         += $refunded_shipping_method->get_total_tax() * - 1;
+				$shipping_charges['shipping_cost'] += $refunded_shipping_method->get_total() * - 1;
+				break;
+			}
+		}
+
+		// Get total shipping changes with refund (Only per product shipping charges).
+		foreach ( $order->get_shipping_methods() as $shipping_method ) {
+			if ( $pp_shipping_title !== $shipping_method->get_name() ) {
+				continue;
+			}
+
+			$shipping_charges = [
+				'taxes'         => $shipping_method->get_total_tax() - $shipping_charges['taxes'],
+				'shipping_cost' => $shipping_method->get_total() - $shipping_charges['shipping_cost'],
+			];
+			break;
+		}
+
+		// Get shipping charges per line item.
+		$shipping_charges = [
+			'taxes'         => $shipping_charges['taxes'] / $total_order_qty_with_refund,
+			'shipping_cost' => $shipping_charges['shipping_cost'] / $total_order_qty_with_refund,
+		];
+
+		// Get shipping charges for total quantity of item.
+		return [
+			'taxes'         => round(
+				$shipping_charges['taxes'] * $total_item_with_with_refund,
+				wc_get_rounding_precision()
+			),
+			'shipping_cost' => round(
+				$shipping_charges['shipping_cost'] * $total_item_with_with_refund,
+				wc_get_rounding_precision()
+			),
+		];
 	}
 }
