@@ -5,8 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( class_exists( 'WP_Importer' ) ) :
 	class WC_Product_Vendors_Per_Product_Shipping_Importer extends WP_Importer {
+
 		public $id;
-		public $file_url;
 		public $import_page;
 		public $delimiter;
 		public $posts = array();
@@ -32,17 +32,14 @@ if ( class_exists( 'WP_Importer' ) ) :
 		public function dispatch() {
 			$this->header();
 
-			if ( ! empty( $_POST['delimiter'] ) ) {
-				$this->delimiter = stripslashes( trim( $_POST['delimiter'] ) );
-			}
-
+			$this->delimiter = trim( wc_clean( wp_unslash( $_POST['delimiter'] ?? '' ) ) );
 			if ( ! $this->delimiter ) {
 				$this->delimiter = ',';
 			}
 
-			$this->vendor_id = ! empty( $_POST['vendor_id'] ) ? absint( $_POST['vendor_id'] ) : 0;
+			$this->vendor_id = absint( wp_unslash( $_POST['vendor_id'] ?? 0 ) );
 
-			$step = empty( $_GET['step'] ) ? 0 : (int) $_GET['step'];
+			$step = absint( wp_unslash( $_GET['step'] ?? 0 ) );
 
 			switch ( $step ) {
 				case 0:
@@ -53,12 +50,7 @@ if ( class_exists( 'WP_Importer' ) ) :
 					check_admin_referer( 'import-upload' );
 
 					if ( $this->handle_upload() ) {
-
-						if ( $this->id ) {
-							$file = get_attached_file( $this->id );
-						} else {
-							$file = ABSPATH . $this->file_url;
-						}
+						$file = get_attached_file( $this->id );
 
 						add_filter( 'http_request_timeout', array( $this, 'bump_request_timeout' ) );
 
@@ -201,7 +193,16 @@ if ( class_exists( 'WP_Importer' ) ) :
 			}
 
 			// Show Result
-			echo '<div class="updated settings-error below-h2"><p>' . sprintf( esc_html__( 'Import complete - imported <strong>%1$s</strong> shipping rates and skipped <strong>%2$s</strong>.', 'woocommerce-product-vendors' ), $this->imported, $this->skipped ) . '</p></div>';
+			echo '<div class="updated settings-error below-h2"><p>';
+			printf(
+				// translators: 1, 2 - product count, 3 - <strong> tag, 4 - </strong> tag.
+				esc_html__( 'Import complete - imported %3$s%1$d%4$s shipping rates and skipped %3$s%2$d%4$s.', 'woocommerce-product-vendors' ),
+				absint( $this->imported ),
+				absint( $this->skipped ),
+				'<strong>',
+				'</strong>'
+			);
+			echo '</p></div>';
 
 			$this->import_end();
 		}
@@ -222,34 +223,15 @@ if ( class_exists( 'WP_Importer' ) ) :
 		 * @return bool False if error uploading or invalid file, true otherwise
 		 */
 		public function handle_upload() {
-			if ( empty( $_POST['file_url'] ) ) {
+			$file = wp_import_handle_upload();
 
-				$file = wp_import_handle_upload();
-
-				if ( isset( $file['error'] ) ) {
-
-					echo '<p><strong>' . esc_html__( 'Sorry, there has been an error.', 'woocommerce-product-vendors' ) . '</strong><br />';
-
-					echo esc_html( $file['error'] ) . '</p>';
-
-					return false;
-				}
-
-				$this->id = (int) $file['id'];
-			} else {
-
-				if ( file_exists( ABSPATH . $_POST['file_url'] ) ) {
-
-					$this->file_url = esc_attr( $_POST['file_url'] );
-
-				} else {
-
-					echo '<p><strong>' . __( 'Sorry, there has been an error.', 'woocommerce-product-vendors' ) . '</strong></p>';
-
-					return false;
-				}
+			if ( isset( $file['error'] ) ) {
+				echo '<p><strong>' . esc_html__( 'Sorry, there has been an error.', 'woocommerce-product-vendors' ) . '</strong><br />';
+				echo esc_html( $file['error'] ) . '</p>';
+				return false;
 			}
 
+			$this->id = absint( $file['id'] );
 			return true;
 		}
 
@@ -261,7 +243,7 @@ if ( class_exists( 'WP_Importer' ) ) :
 		 */
 		public function header() {
 			echo '<div class="wrap">';
-			echo '<h2>' . __( 'Import Per-product Shipping Rates', 'woocommerce-product-vendors' ) . '</h2>';
+			echo '<h2>' . esc_html__( 'Import Per-product Shipping Rates', 'woocommerce-product-vendors' ) . '</h2>';
 		}
 
 		/**
@@ -303,7 +285,7 @@ if ( class_exists( 'WP_Importer' ) ) :
 
 			if ( ! empty( $upload_dir['error'] ) ) :
 				?><div class="error"><p><?php esc_html_e( 'Before you can upload your import file, you will need to fix the following error:', 'woocommerce-product-vendors' ); ?></p>
-				<p><strong><?php echo $upload_dir['error']; ?></strong></p></div><?php
+				<p><strong><?php echo esc_html( $upload_dir['error'] ); ?></strong></p></div><?php
 			else :
 				?>
 				<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo esc_attr( wp_nonce_url( $action, 'import-upload' ) ); ?>">
@@ -316,8 +298,8 @@ if ( class_exists( 'WP_Importer' ) ) :
 								<td>
 									<input type="file" id="upload" name="import" size="25" />
 									<input type="hidden" name="action" value="save" />
-									<input type="hidden" name="max_file_size" value="<?php echo $bytes; ?>" />
-									<small><?php printf( esc_html__( 'Maximum size: %s', 'woocommerce-product-vendors' ), $size ); ?></small>
+									<input type="hidden" name="max_file_size" value="<?php echo esc_attr( $bytes ); ?>" />
+									<small><?php printf( esc_html__( 'Maximum size: %s', 'woocommerce-product-vendors' ), esc_html( $size ) ); ?></small>
 								</td>
 							</tr>
 							<tr>

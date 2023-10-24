@@ -79,7 +79,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 </tr>
 
 <tr class="form-field">
-	<th scope="row" valign="top"><label for="wcpv-vendor-admins"><?php esc_html_e( 'Vendor Admins', 'woocommerce-product-vendors' ); ?> <?php echo wc_help_tip( __( 'Additional access level can be set individually per vendor user.', 'woocommerce-product-vendors' ) ); ?></label></th>
+	<th scope="row" valign="top"><label for="wcpv-vendor-admins"><?php esc_html_e( 'Vendor Admins', 'woocommerce-product-vendors' ); ?> <?php echo wc_help_tip( esc_html__( 'Additional access level can be set individually per vendor user.', 'woocommerce-product-vendors' ) ); ?></label></th>
 
 	<td>
 		<select id="wcpv-vendor-admins" style="width: 50%;" class="wc-customer-search" name="vendor_data[admins][]" multiple="multiple" data-placeholder="<?php esc_attr_e( 'Search for Users', 'woocommerce-product-vendors' ); ?>">
@@ -104,7 +104,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 </tr>
 
 <tr class="form-field">
-	<th scope="row" valign="top"><label for="wcpv-vendor-commission"><?php esc_html_e( 'Commission', 'woocommerce-product-vendors' ); ?> <?php echo wc_help_tip( __( 'Enter a positive number.', 'woocommerce-product-vendors' ) ); ?></label></th>
+	<th scope="row" valign="top"><label for="wcpv-vendor-commission"><?php esc_html_e( 'Commission', 'woocommerce-product-vendors' ); ?> <?php echo wc_help_tip( esc_html__( 'Enter a positive number.', 'woocommerce-product-vendors' ) ); ?></label></th>
 
 	<td>
 		<input type="number" id="wcpv-vendor-commission" name="vendor_data[commission]" value="<?php echo esc_attr( $commission ); ?>" step="any" min="0" />
@@ -192,7 +192,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<td>
 		<select id="wcpv-vendor-timezone" name="vendor_data[timezone]" aria-describedby="timezone-description" class="wc-enhanced-select" style="width:20%">
-			<?php echo wp_timezone_choice( $tzstring ); ?>
+			<?php echo wp_timezone_choice( $tzstring ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</select>
 
 		<p><?php esc_html_e( 'Set the local timezone.', 'woocommerce-product-vendors' ); ?></p>

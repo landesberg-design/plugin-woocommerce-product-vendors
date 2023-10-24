@@ -30,8 +30,6 @@ class WC_Product_Vendors_Registration {
 			if ( isset( $_POST['action'] ) && $_POST['action'] === 'add-tag'  ) {
 				add_action( 'created_' . WC_PRODUCT_VENDORS_TAXONOMY, array( $this, 'create_user_on_vendor_term_creation' ), 100 );
 			}
-		} else {
-			add_action( 'wp_enqueue_scripts', array( $this, 'add_scripts' ) );
 		}
 
 		return true;
@@ -46,6 +44,14 @@ class WC_Product_Vendors_Registration {
 	 * @return bool
 	 */
 	public function add_scripts() {
+		// Get the current global post object.
+		$post = get_post();
+
+		if ( ! is_admin() && ( ! $post || ! has_shortcode( $post->post_content, 'wcpv_registration' ) ) ) {
+			// Do nothing if not admin and there is no global post or the shortcode is not present.
+			return;
+		}
+
 		wp_enqueue_script( 'wcpv-frontend-scripts' );
 
 		$localized_vars = array(
@@ -68,7 +74,22 @@ class WC_Product_Vendors_Registration {
 	 * @return bool
 	 */
 	public function registration_ajax() {
-		$this->registration_form_validation( $_POST['form_items'] );
+		if ( ! isset( $_POST['form_items'] ) ) {
+			return false;
+		}
+		if ( ! is_array( $_POST['form_items'] ) ) {
+			parse_str( $_POST['form_items'], $form_items ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- POST data will be sanitized and unslashed below.
+		} else {
+			$form_items = $_POST['form_items']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- POST data will be sanitized and unslashed below.
+		}
+
+		$form_items = array_map(
+			function( $item ) {
+				return sanitize_text_field( wp_unslash( $item ) );
+			},
+			$form_items // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- POST data is both sanitized and unslashed above.
+		);
+		$this->registration_form_validation( $form_items );
 
 		return true;
 	}
@@ -98,18 +119,12 @@ class WC_Product_Vendors_Registration {
 	public function registration_form_validation( $form_items = array() ) {
 		global $errors;
 
-		if ( ! is_array( $form_items ) ) {
-			parse_str( $_POST['form_items'], $form_items );
-		}
-
-		$form_items = array_map( 'sanitize_text_field', $form_items );
-
 		if ( ! isset( $form_items ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
-		if ( ! wp_verify_nonce( $_POST['ajaxRegistrationNonce'], '_wc_product_vendors_registration_nonce' ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+		if ( ! isset( $_POST['ajaxRegistrationNonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['ajaxRegistrationNonce'] ) ), '_wc_product_vendors_registration_nonce' ) ) {
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		// handle form submission/validation
@@ -236,7 +251,10 @@ class WC_Product_Vendors_Registration {
 				$vendor_data['profile'] = $form_items['vendor_description'];
 			}
 
-			update_term_meta( $term['term_id'], 'vendor_data', apply_filters( 'wcpv_registration_default_vendor_data', $vendor_data ) );
+			WC_Product_Vendors_Utils::set_vendor_data(
+				$term['term_id'],
+				apply_filters( 'wcpv_registration_default_vendor_data', $vendor_data )
+			);
 
 			// change this user's role to pending vendor
 			wp_update_user( apply_filters( 'wcpv_registration_default_user_data', array(
@@ -341,7 +359,7 @@ class WC_Product_Vendors_Registration {
 	public function create_user_on_vendor_term_creation( $term_id ) {
 		// Get term and vendor data
 		$term         = get_term( $term_id );
-		$vendor_data  = get_term_meta( $term_id, 'vendor_data', true );
+		$vendor_data  = WC_Product_Vendors_Utils::get_vendor_data_by_id( $term_id );
 		$vendor_data  = ! is_array( $vendor_data ) ? array() : $vendor_data;
 		$vendor_email = empty( $vendor_data['email'] ) ? null : $vendor_data['email'];
 
@@ -368,7 +386,7 @@ class WC_Product_Vendors_Registration {
 			$admins[]              = $user_id;
 			$vendor_data['admins'] = array_unique( $admins );
 
-			update_term_meta( $term_id, 'vendor_data', $vendor_data );
+			WC_Product_Vendors_Utils::set_vendor_data( $term_id, $vendor_data );
 		}
 	}
 }

@@ -82,14 +82,22 @@ class WC_Product_Vendors_Install {
 		// Needs to run every time since we do not know when bookings could be updated.
 		self::$roles->remove_deprecated_caps();
 
-		if ( ! empty( $_GET['dismiss_wcpv'] ) ) {
-			delete_option( 'wcpv_show_update_notice' );			
+		if ( ! empty( $_GET['dismiss_wcpv'] ) &&
+			isset( $_GET['_wcpv_v2_notice_dismiss_nonce'] ) &&
+			wp_verify_nonce( wc_clean( wp_unslash( $_GET['_wcpv_v2_notice_dismiss_nonce'] ) ), 'wcpv_v2_notice_dismiss_nonce' ) &&
+			current_user_can( 'manage_options' )
+		) {
+			delete_option( 'wcpv_show_update_notice' );
 			add_option( 'wcpv_show_update_notice', false );
 		}
 
-		if ( ! empty( $_GET['do_update_wcpv'] ) ) {
+		if ( ! empty( $_GET['do_update_wcpv'] ) &&
+			isset( $_GET['_wcpv_v2_notice_update_nonce'] ) &&
+			wp_verify_nonce( wc_clean( wp_unslash( $_GET['_wcpv_v2_notice_update_nonce'] ) ), 'wcpv_v2_notice_update_nonce' ) &&
+			current_user_can( 'manage_options' )
+		) {
 			self::update();
-			
+
 			wp_redirect( add_query_arg( 'wcpv-updated', 'true', admin_url( 'admin.php?page=wc-settings&tab=products&section=wcpv_vendor_settings' ) ) );
 			exit;
 		}
@@ -253,8 +261,6 @@ class WC_Product_Vendors_Install {
 	 * @return bool
 	 */
 	public static function install() {
-		global $wpdb;
-
 		if ( ! defined( 'WCPV_INSTALLING' ) ) {
 			define( 'WCPV_INSTALLING', true );
 		}
@@ -324,7 +330,7 @@ class WC_Product_Vendors_Install {
 		if ( $show_notice ) {
 			?>
 			<div class="updated woocommerce-message woocommerce-product-vendors-activated" style="border-left-color: #aa559a;">
-				<h4><?php esc_html_e( 'WooCommerce Product Vendors Installed &#8211; To get started,', 'woocommerce-product-vendors' ); ?> <a href="<?php echo admin_url( 'admin.php?page=wc-settings&tab=products&section=wcpv_vendor_settings' ); ?>"><?php esc_html_e( 'configure your vendor settings', 'woocommerce-product-vendors' ); ?></a></h4>
+				<h4><?php esc_html_e( 'WooCommerce Product Vendors Installed &#8211; To get started,', 'woocommerce-product-vendors' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=wc-settings&tab=products&section=wcpv_vendor_settings' ) ); ?>"><?php esc_html_e( 'configure your vendor settings', 'woocommerce-product-vendors' ); ?></a></h4>
 			</div>
 			<?php
 
@@ -337,17 +343,12 @@ class WC_Product_Vendors_Install {
 	 *
 	 * @access public
 	 * @since 2.0.0
+	 * @sicne x.x.x Replace DELETE SQL query with utility class function
 	 * @version 2.0.0
 	 * @return bool
 	 */
 	public static function clear_reports_transients() {
-		global $wpdb;
-
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%wcpv_reports%'" );
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%wcpv_unfulfilled_products%'" );
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%book_dr%'" );
-
-		return true;
+		return WC_Product_Vendors_Utils::clear_reports_transients();
 	}
 
 	/**

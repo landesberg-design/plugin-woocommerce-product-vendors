@@ -163,12 +163,10 @@ class WC_Product_Vendors_Taxonomy {
 			return;
 		}
 
-		$vendor_data = get_term_meta( $term, 'vendor_data', true );
+		$vendor_data = WC_Product_Vendors_Utils::get_vendor_data_by_id( $term );
 		if ( ! empty( $vendor_data['admins'] ) ) {
-			if ( version_compare( WC_VERSION, '3.0.0', '>=' ) && is_array( $vendor_data['admins'] ) ) {
+			if ( is_array( $vendor_data['admins'] ) ) {
 				$admin_ids = array_map( 'absint', $vendor_data['admins'] );
-			} else {
-				$admin_ids = array_filter( array_map( 'absint', explode( ',', $vendor_data['admins'] ) ) );
 			}
 
 			foreach ( $admin_ids as $admin_id ) {

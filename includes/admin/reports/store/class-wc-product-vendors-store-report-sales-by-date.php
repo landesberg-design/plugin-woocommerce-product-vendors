@@ -61,6 +61,7 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 	 *
 	 * @access public
 	 * @since 2.0.0
+	 * @since 2.2.0 Use WC_Product_Vendor_Transient_Manager to get and set data in transient.
 	 * @version 2.0.0
 	 * @return array of objects
 	 */
@@ -74,7 +75,7 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 			return $this->report_data;
 		}
 
-		$transient_name = 'wcpv_reports_store_leg_' . $this->vendor_id . '_' . $this->current_range;
+		$transient_name = 'store_sales_by_date_' . $this->current_range;
 
 		$start_date = '';
 		$end_date   = '';
@@ -102,18 +103,21 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 		$sql .= " AND commission.commission_status != 'void'";
 		$sql .= WC_Product_Vendors_Utils::get_commission_date_sql_query_from_range( $this->current_range, $start_date, $end_date );
 
-		if ( false === ( $results = get_transient( $transient_name ) ) ) {
+		$vendor_report_transient_manager = WC_Product_Vendor_Transient_Manager::make();
+		$results                         = $vendor_report_transient_manager->get( $transient_name );
+
+		if ( ! $results ) {
 			// Enable big selects for reports
 			$wpdb->query( 'SET SESSION SQL_BIG_SELECTS=1' );
 
 			if ( ! empty( $this->vendor_id ) ) {
-				$results = $wpdb->get_results( $wpdb->prepare( $sql, $this->vendor_id ) );
+				$results = $wpdb->get_results( $wpdb->prepare( $sql, $this->vendor_id ) ); // nosemgrep:audit.php.wp.security.sqli.input-in-sinks
 
 			} else {
-				$results = $wpdb->get_results( $sql );
+				$results = $wpdb->get_results( $sql ); // nosemgrep:audit.php.wp.security.sqli.input-in-sinks
 			}
 
-			set_transient( $transient_name, $results, DAY_IN_SECONDS );
+			$vendor_report_transient_manager->save( $transient_name, $results );
 		}
 
 		$total_product_amount      = 0.00;
@@ -243,7 +247,14 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 
 		$this->calculate_current_range( $this->current_range );
 
-		include( 'views/html-report-by-date.php' );
+		/**
+		 * Optionally override the views/html-report-by-date.php view: filters must return a string to be passed into include_once.
+		 *
+		 * @since 2.1.77
+		 *
+		 * @param string $path Default path to the view.
+		 */
+		include( apply_filters( 'wcpv_report_by_date_template', 'views/html-report-by-date.php' ) );
 	}
 
 	/**
@@ -253,14 +264,14 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 		?>
 		<a
 			href="#"
-			download="report-<?php echo esc_attr( $this->current_range ); ?>-<?php echo date_i18n( 'Y-m-d', current_time('timestamp') ); ?>.csv"
+			download="report-<?php echo esc_attr( $this->current_range ); ?>-<?php echo esc_attr( date_i18n( 'Y-m-d', current_time('timestamp') ) ); ?>.csv"
 			class="export_csv"
 			data-export="chart"
 			data-xaxes="<?php esc_attr_e( 'Date', 'woocommerce-product-vendors' ); ?>"
 			data-exclude_series="2"
-			data-groupby="<?php echo $this->chart_groupby; ?>"
-			data-range="<?php echo $this->current_range; ?>"
-			data-custom-range="<?php echo 'custom' === $this->current_range ? $this->start_date . '-' . $this->end_date : ''; ?>"
+			data-groupby="<?php echo esc_attr( $this->chart_groupby ); ?>"
+			data-range="<?php echo esc_attr( $this->current_range ); ?>"
+			data-custom-range="<?php echo 'custom' === $this->current_range ? esc_attr( $this->start_date . '-' . $this->end_date ) : ''; ?>"
 		>
 			<?php esc_html_e( 'Export CSV', 'woocommerce-product-vendors' ); ?>
 		</a>
@@ -283,6 +294,7 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 	/**
 	 * Get the main chart
 	 *
+	 * @since 2.2.0 Use WC_Product_Vendor_Transient_Manager to get and set data in transient.
 	 * @return string
 	 */
 	public function get_main_chart() {
@@ -292,6 +304,8 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 		if ( ! WC_Product_Vendors_Utils::commission_table_exists() ) {
 			return $this->report_data;
 		}
+
+		$transient_name = 'store_main_sales_by_date_' . $this->current_range;
 
 		$start_date = '';
 		$end_date   = '';
@@ -305,7 +319,6 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 			$end_date = WC_Product_Vendors_Utils::is_valid_mysql_formatted_date( $end_date ) ? $end_date : '';
 		}
 
-		$transient_name = 'wcpv_reports_store_' . $this->vendor_id . '_' . $this->current_range;
 
 		if ( 'custom' === $this->current_range ) {
 			$transient_name .= '_' . $start_date . '-' . $end_date;
@@ -325,17 +338,20 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 		$sql .= WC_Product_Vendors_Utils::get_commission_date_sql_query_from_range( $this->current_range, $start_date, $end_date );
 		$sql .= " GROUP BY DATE( commission.order_date )";
 
-		if ( false === ( $results = get_transient( $transient_name ) ) ) {
+		$vendor_report_transient_manager = WC_Product_Vendor_Transient_Manager::make();
+		$results                         = $vendor_report_transient_manager->get( $transient_name );
+
+		if ( ! $results ) {
 			// Enable big selects for reports
 			$wpdb->query( 'SET SESSION SQL_BIG_SELECTS=1' );
 
 			if ( ! empty( $this->vendor_id ) ) {
-				$results = $wpdb->get_results( $wpdb->prepare( $sql, $this->vendor_id ) );
+				$results = $wpdb->get_results( $wpdb->prepare( $sql, $this->vendor_id ) ); // nosemgrep:audit.php.wp.security.sqli.input-in-sinks
 			} else {
-				$results = $wpdb->get_results( $sql );
+				$results = $wpdb->get_results( $sql ); // nosemgrep:audit.php.wp.security.sqli.input-in-sinks
 			}
 
-			set_transient( $transient_name, $results, DAY_IN_SECONDS );
+			$vendor_report_transient_manager->save( $transient_name, $results );
 		}
 
 		// Prepare data for report
@@ -378,74 +394,83 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 			var main_chart;
 
 			jQuery(function(){
-				var order_data = JSON.parse( decodeURIComponent( '<?php echo $chart_data; ?>' ) );
+				var order_data = JSON.parse( decodeURIComponent( <?php echo wp_json_encode( $chart_data ); ?> ) );
 				var drawGraph = function( highlight ) {
 					var series = [
 						{
-							label: "<?php echo esc_js( __( 'Number of orders', 'woocommerce-product-vendors' ) ); ?>",
+							label: <?php echo wp_json_encode( __( 'Number of orders', 'woocommerce-product-vendors' ) ); ?>,
 							data: order_data.order_counts,
-							color: '<?php echo $this->chart_colors['order_count']; ?>',
-							bars: { fillColor: '<?php echo $this->chart_colors['order_count']; ?>', fill: true, show: true, lineWidth: 0, barWidth: <?php echo $this->barwidth; ?> * 0.5, align: 'left' },
+							color: <?php echo wp_json_encode( $this->chart_colors['order_count'] ); ?>,
+							bars: { fillColor: <?php echo wp_json_encode( $this->chart_colors['order_count'] ); ?>, fill: true, show: true, lineWidth: 0, barWidth: <?php echo wp_json_encode( (int) $this->barwidth ); ?> * 0.5, align: 'left' },
 							shadowSize: 0,
 							hoverable: false
 						},
 						{
-							label: "<?php echo esc_js( __( 'Number of items sold', 'woocommerce-product-vendors' ) ) ?>",
+							label: <?php echo wp_json_encode( __( 'Number of items sold', 'woocommerce-product-vendors' ) ); ?>,
 							data: order_data.order_item_counts,
-							color: '<?php echo $this->chart_colors['item_count']; ?>',
-							bars: { fillColor: '<?php echo $this->chart_colors['item_count']; ?>', fill: true, show: true, lineWidth: 0, barWidth: <?php echo $this->barwidth; ?> * 0.5, align: 'center' },
+							color: <?php echo wp_json_encode( $this->chart_colors['item_count'] ); ?>,
+							bars: { fillColor: <?php echo wp_json_encode( $this->chart_colors['item_count'] ); ?>, fill: true, show: true, lineWidth: 0, barWidth: <?php echo wp_json_encode( (int) $this->barwidth ); ?> * 0.5, align: 'center' },
 							shadowSize: 0,
 							hoverable: false
 						},
 						{
-							label: "<?php echo esc_js( __( 'Shipping amount', 'woocommerce-product-vendors' ) ) ?>",
+							label: <?php echo wp_json_encode( __( 'Shipping amount', 'woocommerce-product-vendors' ) ); ?>,
 							data: order_data.shipping_amounts,
 							yaxis: 2,
-							color: '<?php echo $this->chart_colors['shipping_amount']; ?>',
+							color: <?php echo wp_json_encode( $this->chart_colors['shipping_amount'] ); ?>,
 							points: { show: true, radius: 5, lineWidth: 2, fillColor: '#fff', fill: true },
 							lines: { show: true, lineWidth: 2, fill: false },
 							shadowSize: 0,
-							prepend_tooltip: "<?php echo get_woocommerce_currency_symbol(); ?>"
+							prepend_tooltip: <?php echo wp_json_encode( get_woocommerce_currency_symbol() ); ?>
 						},
 						{
-							label: "<?php echo esc_js( __( 'Average sales amount', 'woocommerce-product-vendors' ) ) ?>",
-							data: [ [ <?php echo min( array_keys( $order_amounts ) ); ?>, <?php echo $this->report_data->average_sales; ?> ], [ <?php echo max( array_keys( $order_amounts ) ); ?>, <?php echo $this->report_data->average_sales; ?> ] ],
+							label: <?php echo wp_json_encode( __( 'Average sales amount', 'woocommerce-product-vendors' ) ); ?>,
+							data: [ [ <?php echo wp_json_encode( min( array_keys( $order_amounts ) ) ); ?>, <?php echo wp_json_encode( $this->report_data->average_sales ); ?> ], [ <?php echo wp_json_encode( max( array_keys( $order_amounts ) ) ); ?>, <?php echo wp_json_encode( $this->report_data->average_sales ); ?> ] ],
 							yaxis: 2,
-							color: '<?php echo $this->chart_colors['average']; ?>',
+							color: <?php echo wp_json_encode( $this->chart_colors['average'] ); ?>,
 							points: { show: false },
 							lines: { show: true, lineWidth: 2, fill: false },
 							shadowSize: 0,
 							hoverable: false
 						},
 						{
-							label: "<?php echo esc_js( __( 'Gross Sales amount', 'woocommerce-product-vendors' ) ) ?>",
+							label: <?php echo wp_json_encode( __( 'Gross Sales amount', 'woocommerce-product-vendors' ) ); ?>,
 							data: order_data.order_amounts,
 							yaxis: 2,
-							color: '<?php echo $this->chart_colors['sales_amount']; ?>',
+							color: <?php echo wp_json_encode( $this->chart_colors['sales_amount'] ); ?>,
 							points: { show: true, radius: 5, lineWidth: 2, fillColor: '#fff', fill: true },
 							lines: { show: true, lineWidth: 2, fill: false },
 							shadowSize: 0,
-							<?php echo $this->get_currency_tooltip(); ?>
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already in JSON format.
+							echo $this->get_currency_tooltip();
+							?>
 						},
 						{
-							label: "<?php echo esc_js( __( 'Net Sales amount', 'woocommerce-product-vendors' ) ) ?>",
+							label: <?php echo wp_json_encode( __( 'Net Sales amount', 'woocommerce-product-vendors' ) ); ?>,
 							data: order_data.net_order_amounts,
 							yaxis: 2,
-							color: '<?php echo $this->chart_colors['net_sales_amount']; ?>',
+							color: <?php echo wp_json_encode( $this->chart_colors['net_sales_amount'] ); ?>,
 							points: { show: true, radius: 6, lineWidth: 4, fillColor: '#fff', fill: true },
 							lines: { show: true, lineWidth: 5, fill: false },
 							shadowSize: 0,
-							<?php echo $this->get_currency_tooltip(); ?>
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already in JSON format.
+							echo $this->get_currency_tooltip();
+							?>
 						},
 						{
-							label: "<?php echo esc_js( __( 'Total Commission Amount (vendors)', 'woocommerce-product-vendors' ) ) ?>",
+							label: <?php echo wp_json_encode( __( 'Total Commission Amount (vendors)', 'woocommerce-product-vendors' ) ); ?>,
 							data: order_data.total_commission,
 							yaxis: 2,
-							color: '<?php echo $this->chart_colors['commission']; ?>',
+							color: <?php echo wp_json_encode( $this->chart_colors['commission'] ); ?>,
 							points: { show: true, radius: 6, lineWidth: 4, fillColor: '#fff', fill: true },
 							lines: { show: true, lineWidth: 5, fill: false },
 							shadowSize: 0,
-							<?php echo $this->get_currency_tooltip(); ?>
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already in JSON format.
+							echo $this->get_currency_tooltip();
+							?>
 						}
 					];
 
@@ -484,7 +509,7 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 								timeformat: "<?php if ( $this->chart_groupby == 'day' ) echo '%d %b'; else echo '%b'; ?>",
 								monthNames: <?php echo wp_json_encode( array_values( $wp_locale->month_abbrev ) ); ?>,
 								tickLength: 1,
-								minTickSize: [1, "<?php echo $this->chart_groupby; ?>"],
+								minTickSize: [1, <?php echo wp_json_encode( $this->chart_groupby ); ?>],
 								font: {
 									color: "#aaa"
 								}
@@ -559,7 +584,7 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 		$vendor = get_term( $vendor_id, WC_PRODUCT_VENDORS_TAXONOMY );
 
 		echo '<p>' . ' <strong>' . esc_html( $vendor->name ) . '</strong></p>';
-		echo '<p><a class="button" href="' . esc_url( remove_query_arg( 'vendor_id' ) ) . '">' . __( 'Reset', 'woocommerce-product-vendors' ) . '</a></p>';
+		echo '<p><a class="button" href="' . esc_url( remove_query_arg( 'vendor_id' ) ) . '">' . esc_html__( 'Reset', 'woocommerce-product-vendors' ) . '</a></p>';
 	}
 
 	/**
@@ -574,11 +599,11 @@ class WC_Product_Vendors_Store_Report_Sales_By_Date extends WC_Admin_Report {
 					<select style="width: 50%;" class="wcpv-vendor-search-bar" name="vendor_id" data-placeholder="<?php esc_attr_e( 'Search for a vendor&hellip;', 'woocommerce-product-vendors' ); ?>">
 					</select>
 					<input type="submit" class="submit button" value="<?php esc_attr_e( 'Show', 'woocommerce-product-vendors' ); ?>" />
-					<input type="hidden" name="range" value="<?php if ( ! empty( $_GET['range'] ) ) echo esc_attr( $_GET['range'] ) ?>" />
-					<input type="hidden" name="start_date" value="<?php if ( ! empty( $_GET['start_date'] ) ) echo esc_attr( $_GET['start_date'] ) ?>" />
-					<input type="hidden" name="end_date" value="<?php if ( ! empty( $_GET['end_date'] ) ) echo esc_attr( $_GET['end_date'] ) ?>" />
-					<input type="hidden" name="page" value="<?php if ( ! empty( $_GET['page'] ) ) echo esc_attr( $_GET['page'] ) ?>" />
-					<input type="hidden" name="tab" value="<?php if ( ! empty( $_GET['tab'] ) ) echo esc_attr( $_GET['tab'] ) ?>" />
+					<input type="hidden" name="range" value="<?php echo esc_attr( wc_clean( wp_unslash( $_GET['range'] ?? '' ) ) ); ?>" />
+					<input type="hidden" name="start_date" value="<?php echo esc_attr( wc_clean( wp_unslash( $_GET['start_date'] ?? '' ) ) ); ?>" />
+					<input type="hidden" name="end_date" value="<?php echo esc_attr( wc_clean( wp_unslash( $_GET['end_date'] ?? '' ) ) ); ?>" />
+					<input type="hidden" name="page" value="<?php echo esc_attr( wc_clean( wp_unslash( $_GET['page'] ?? '' ) ) ); ?>" />
+					<input type="hidden" name="tab" value="<?php echo esc_attr( wc_clean( wp_unslash( $_GET['tab'] ?? '' ) ) ); ?>" />
 				</div>
 			</form>
 		</div>

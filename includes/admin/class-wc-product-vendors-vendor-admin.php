@@ -179,7 +179,47 @@ class WC_Product_Vendors_Vendor_Admin {
 		// Restrict vendor access to the single product.
 		add_filter( 'map_meta_cap', array( self::$self, 'map_vendor_capabilities' ), 10, 4 );
 
+		// Show title on vender order details page.
+		add_action( 'current_screen', array( self::$self, 'display_html_page_title' ) );
+
 		return true;
+	}
+
+	/**
+	 * Display a title on the vendor order details page.
+	 *
+	 * Defines the WordPress title global when viewing an order in the context
+	 * of a vendor.
+	 *
+	 * @since 2.2.0
+	 *
+	 * @param WP_Screen $current_screen The current screen object. Passed by reference.
+	 */
+	public function display_html_page_title( $current_screen ) {
+		// Only modify the vendor order page.
+		if ( 'admin_page_wcpv-vendor-order' !== $current_screen->id ) {
+			return;
+		}
+
+		// Modify the title.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce is not required here.
+		if ( ! empty( $_GET['id'] ) ) {
+			global $title;
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce is not required here.
+			$order_id = absint( $_GET['id'] );
+			$order    = wc_get_order( $order_id );
+			if ( ! $order ) {
+				// Do nothing if the user does not have access to the order number.
+				return;
+			}
+
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- This is to ensure the title is displayed to vendors.
+			$title = sprintf(
+				/* translators: %s: Order number. */
+				esc_html__( 'Order #%s Details', 'woocommerce-product-vendors' ),
+				esc_html( $order->get_order_number() )
+			);
+		}
 	}
 
 	/**
@@ -414,12 +454,12 @@ class WC_Product_Vendors_Vendor_Admin {
 	 * @return bool
 	 */
 	public function vendor_switch_ajax() {
-		if ( ! wp_verify_nonce( $_POST['switch_vendor_nonce'], 'wcpv_switch_vendor' ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+		if ( ! wp_verify_nonce( wc_clean( wp_unslash( $_POST['switch_vendor_nonce'] ) ), 'wcpv_switch_vendor' ) ) {
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		if ( empty( $_POST['vendor'] ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		$vendor = sanitize_text_field( $_POST['vendor'] );
@@ -449,19 +489,19 @@ class WC_Product_Vendors_Vendor_Admin {
 		global $errors;
 
 		if ( ! is_array( $_POST['form_items'] ) ) {
-			parse_str( $_POST['form_items'], $form_items );
+			parse_str( wp_unslash( $_POST['form_items'] ), $form_items ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		} else {
-			$form_items = $_POST['form_items'];
+			$form_items = wp_unslash( $_POST['form_items'] ?? array() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		$form_items = array_map( 'sanitize_text_field', $form_items );
 
 		if ( ! isset( $form_items ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
-		if ( ! wp_verify_nonce( $_POST['ajaxVendorSupportNonce'], '_wc_product_vendors_vendor_support_nonce' ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+		if ( ! wp_verify_nonce( wp_unslash( $_POST['ajaxVendorSupportNonce'] ?? '' ), '_wc_product_vendors_vendor_support_nonce' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		// handle form submission/validation
@@ -604,7 +644,7 @@ class WC_Product_Vendors_Vendor_Admin {
 	 * @return bool
 	 */
 	public function add_pending_vendor_message() {
-		_e( 'Thanks for registering to become a vendor.  Your application is being reviewed at this time.', 'woocommerce-product-vendors' );
+		esc_html_e( 'Thanks for registering to become a vendor.  Your application is being reviewed at this time.', 'woocommerce-product-vendors' );
 
 		return true;
 	}
@@ -691,7 +731,6 @@ class WC_Product_Vendors_Vendor_Admin {
 			'modalLogoTitle'           => __( 'Add Logo', 'woocommerce-product-vendors' ),
 			'buttonLogoText'           => __( 'Add Logo', 'woocommerce-product-vendors' ),
 			'currentScreen'            => $current_screen->id,
-			'ajaxVendorSupportNonce'   => wp_create_nonce( '_wc_product_vendors_vendor_support_nonce' ),
 			'vendorSupportSuccess'     => __( 'Your question has been submitted.  You will be contacted shortly.', 'woocommerce-product-vendors' ),
 		) );
 
@@ -851,7 +890,7 @@ class WC_Product_Vendors_Vendor_Admin {
 
 		if ( 'post.php' !== $pagenow
 			|| ! isset( $_GET['post'] )
-			|| 'product' !== get_post_type( $_GET['post'] ) )
+			|| 'product' !== get_post_type( wc_clean( wp_unslash( $_GET['post'] ) ) ) )
 		{
 			return;
 		}
@@ -863,7 +902,7 @@ class WC_Product_Vendors_Vendor_Admin {
 			return;
 		}
 
-		wp_die( __( 'You are not allowed to edit this item.', 'woocommerce-product-vendors' ) );
+		wp_die( esc_html__( 'You are not allowed to edit this item.', 'woocommerce-product-vendors' ) );
 	}
 
 	/**
@@ -871,9 +910,12 @@ class WC_Product_Vendors_Vendor_Admin {
 	 *
 	 * @access public
 	 * @since 2.0.0
-	 * @version 2.0.0
+	 * @since 2.2.0 Add WC_Product_Vendor_Transient_Manager to delete vendor transient data.
+	 *
 	 * @param int $post_id
+	 *
 	 * @return bool
+	 * @version 2.0.0
 	 */
 	public function save_post( $post_id ) {
 		if ( WC_Product_Vendors_Utils::auth_vendor_user() ) {
@@ -891,11 +933,7 @@ class WC_Product_Vendors_Vendor_Admin {
 				// set visibility to catalog/search
 				update_post_meta( $post_id, '_visibility', 'visible' );
 
-				// Clear low stock transient.
-				WC_Product_Vendors_Utils::clear_low_stock_transient();
-
-				// Clear out of stock transient.
-				WC_Product_Vendors_Utils::clear_out_of_stock_transient();
+				WC_Product_Vendor_Transient_Manager::make()->delete();
 			}
 		}
 
@@ -1231,7 +1269,7 @@ class WC_Product_Vendors_Vendor_Admin {
 		// Check if vendor have access to order page.
 		if ( ! $order ) {
 			echo '<div class="error"><p>';
-			print_r( __( 'You do not have permission to view this page.', 'woocommerce-product-vendors' ) );
+			esc_html_e( 'You do not have permission to view this page.', 'woocommerce-product-vendors' );
 			echo '</p></div>';
 			return;
 		}
@@ -1248,7 +1286,7 @@ class WC_Product_Vendors_Vendor_Admin {
 		// Check if vendor have access to order page.
 		if ( ! WC_Product_Vendors_Utils::can_logged_in_user_access_order( $order_id ) ) {
 			echo '<div class="error"><p>';
-			print_r( __( 'You do not have permission to view this page.', 'woocommerce-product-vendors' ) );
+			esc_html_e( 'You do not have permission to view this page.', 'woocommerce-product-vendors' );
 			echo '</p></div>';
 			return;
 		}
@@ -1340,7 +1378,7 @@ class WC_Product_Vendors_Vendor_Admin {
 			echo '<div class="options_group show_if_variable show_if_booking">';
 			?>
 			<p class="wcpv-commission form-row form-row-first">
-				<label><?php echo esc_html__( 'Commission', 'woocommerce-product-vendors' ) . ' (' . $commission_type . ')'; ?>:</label>
+				<label><?php echo esc_html__( 'Commission', 'woocommerce-product-vendors' ) . ' (' . esc_html( $commission_type ) . ')'; ?>:</label>
 
 				<input type="text" class="short" name="" value="<?php echo esc_attr( $commission ); ?>" disabled="disabled" placeholder="<?php echo esc_attr( $commission_placeholder ); ?>" />
 			</p>
@@ -1368,9 +1406,9 @@ class WC_Product_Vendors_Vendor_Admin {
 		// handle form submission
 		if ( ! empty( $_POST['wcpv_save_vendor_settings_nonce'] ) && ! empty( $_POST['vendor_data'] ) ) {
 			// continue only if nonce passes
-			if ( wp_verify_nonce( $_POST['wcpv_save_vendor_settings_nonce'], 'wcpv_save_vendor_settings' ) ) {
+			if ( wp_verify_nonce( wc_clean( wp_unslash( $_POST['wcpv_save_vendor_settings_nonce'] ) ), 'wcpv_save_vendor_settings' ) ) {
 				$allowed_editable_settings = $this->get_vendor_store_editable_settings_list();
-				$posted_vendor_data        = $_POST['vendor_data'];
+				$posted_vendor_data        = wp_unslash( $_POST['vendor_data'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 				// sanitize
 				$posted_vendor_data = array_map( 'sanitize_text_field', $posted_vendor_data );
@@ -1390,8 +1428,7 @@ class WC_Product_Vendors_Vendor_Admin {
 				// merge the changes with existing settings
 				$posted_vendor_data = array_merge( $vendor_data, $posted_vendor_data );
 
-				if ( update_term_meta( WC_Product_Vendors_Utils::get_logged_in_vendor(), 'vendor_data', $posted_vendor_data ) ) {
-
+				if ( WC_Product_Vendors_Utils::set_vendor_data( WC_Product_Vendors_Utils::get_logged_in_vendor(), $posted_vendor_data ) ) {
 					// grab the newly saved settings
 					$vendor_data = WC_Product_Vendors_Utils::get_vendor_data_from_user();
 				}
@@ -1419,7 +1456,14 @@ class WC_Product_Vendors_Vendor_Admin {
 			$tzstring = WC_Product_Vendors_Utils::get_default_timezone_string();
 		}
 
-		include_once( 'views/html-vendor-store-settings-page.php' );
+		/**
+		 * Optionally override the views/html-vendor-store-settings-page.php view: filters must return a string to be passed into include_once.
+		 *
+		 * @since 2.1.77
+		 *
+		 * @param string $path Default path to the view.
+		 */
+		include_once( apply_filters( 'wcpv_vendor_store_settings_page_template', 'views/html-vendor-store-settings-page.php' ) );
 
 		return true;
 	}
@@ -1440,6 +1484,7 @@ class WC_Product_Vendors_Vendor_Admin {
 	 *
 	 * @access public
 	 * @since 2.0.0
+	 * @since 2.2.0 Use WC_Product_Vendor_Transient_Manager to get and set data in transient.
 	 * @version 2.0.0
 	 * @return int $count
 	 */
@@ -1460,12 +1505,16 @@ class WC_Product_Vendors_Vendor_Admin {
 
 		$sql .= " AND commission.vendor_id = '%d'";
 
-		if ( false === ( $count = get_transient( 'wcpv_unfulfilled_products_' . WC_Product_Vendors_Utils::get_logged_in_vendor() ) ) ) {
+		$vendor_report_transient_manager = WC_Product_Vendor_Transient_Manager::make();
+		$transient_name                  = 'unfulfilled_products_count';
+		$count                           = $vendor_report_transient_manager->get( $transient_name );
+
+		if ( ! $count ) {
 			$wpdb->query( 'SET SESSION SQL_BIG_SELECTS=1' );
 
 			$count = $wpdb->get_var( $wpdb->prepare( $sql, WC_Product_Vendors_Utils::get_logged_in_vendor() ) );
 
-			set_transient( 'wcpv_unfulfilled_products_' . WC_Product_Vendors_Utils::get_logged_in_vendor(), $count, DAY_IN_SECONDS );
+			$vendor_report_transient_manager->save( $transient_name, $count );
 		}
 
 		return $count;
@@ -1693,7 +1742,7 @@ class WC_Product_Vendors_Vendor_Admin {
 
 		foreach ( $show_fields as $fieldset ) :
 			?>
-			<h3><?php echo $fieldset['title']; ?></h3>
+			<h3><?php echo esc_html( $fieldset['title'] ); ?></h3>
 			<table class="form-table">
 				<?php
 				foreach ( $fieldset['fields'] as $key => $field ) :
@@ -1702,15 +1751,15 @@ class WC_Product_Vendors_Vendor_Admin {
 						<th><label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $field['label'] ); ?></label></th>
 						<td>
 							<?php if ( ! empty( $field['type'] ) && 'select' == $field['type'] ) : ?>
-								<select name="<?php echo esc_attr( $key ); ?>" id="<?php echo esc_attr( $key ); ?>" class="<?php echo ( ! empty( $field['class'] ) ? $field['class'] : '' ); ?>" style="width: 25em;">
+								<select name="<?php echo esc_attr( $key ); ?>" id="<?php echo esc_attr( $key ); ?>" class="<?php echo ( ! empty( $field['class'] ) ? esc_attr( $field['class'] ) : '' ); ?>" style="width: 25em;">
 									<?php
 									$selected = esc_attr( get_user_meta( $user->ID, $key, true ) );
 									foreach ( $field['options'] as $option_key => $option_value ) : ?>
-									<option value="<?php echo esc_attr( $option_key ); ?>" <?php selected( $selected, $option_key, true ); ?>><?php echo esc_attr( $option_value ); ?></option>
+									<option value="<?php echo esc_attr( $option_key ); ?>" <?php selected( $selected, $option_key, true ); ?>><?php echo esc_html( $option_value ); ?></option>
 									<?php endforeach; ?>
 								</select>
 							<?php else : ?>
-							<input type="text" name="<?php echo esc_attr( $key ); ?>" id="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( get_user_meta( $user->ID, $key, true ) ); ?>" class="<?php echo ( ! empty( $field['class'] ) ? $field['class'] : 'regular-text' ); ?>" />
+							<input type="text" name="<?php echo esc_attr( $key ); ?>" id="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( get_user_meta( $user->ID, $key, true ) ); ?>" class="<?php echo ( ! empty( $field['class'] ) ? esc_attr( $field['class'] ) : 'regular-text' ); ?>" />
 							<?php endif; ?>
 							<br/>
 							<span class="description"><?php echo wp_kses_post( $field['description'] ); ?></span>

@@ -21,12 +21,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 		<p class="form-row form-row-wide">
 			<label for="wcpv-vendor-question"><?php esc_html_e( 'Please provide your support question below.', 'woocommerce-product-vendors' ); ?> <span class="required">*</span></label>
-			<textarea class="input-text" name="vendor_question" id="wcpv-vendor-question" rows="4" tabindex="5"><?php if ( ! empty( $_POST['vendor_question'] ) ) echo trim( $_POST['vendor_question'] ); ?></textarea>
+			<textarea class="input-text" name="vendor_question" id="wcpv-vendor-question" rows="4" tabindex="5"><?php if ( ! empty( $_POST['vendor_question'] ) ) echo esc_textarea( trim( sanitize_textarea_field( wp_unslash( $_POST['vendor_question'] ?? '' ) ) ) ); ?></textarea>
 		</p>
 
 		<?php do_action( 'wcpv_vendor_support_form' ); ?>
 
 		<p class="form-row">
+			<?php wp_nonce_field( '_wc_product_vendors_vendor_support_nonce', 'wcpv_vendor_support_nonce', false ); ?>
 			<input type="submit" class="button" name="submit" value="<?php esc_attr_e( 'Submit', 'woocommerce-product-vendors' ); ?>" tabindex="6" />
 		</p>
 

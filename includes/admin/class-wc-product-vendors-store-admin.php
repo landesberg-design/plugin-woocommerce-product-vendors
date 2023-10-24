@@ -168,6 +168,10 @@ class WC_Product_Vendors_Store_Admin {
 		// saves the vendor to the product.
 		add_action( 'save_post', array( self::$self, 'save_product_vendor' ) );
 
+
+		// output a notice to migrate to new admin storage.
+		add_action( 'admin_notices', array( self::$self, 'migrate_admin_storage_notice' ) );
+
 		return true;
 	}
 
@@ -384,7 +388,14 @@ class WC_Product_Vendors_Store_Admin {
 	public function add_vendor_fields() {
 		$tzstring = WC_Product_Vendors_Utils::get_default_timezone_string();
 
-		include_once( 'views/html-create-vendor-fields-page.php' );
+		/**
+		 * Optionally override the views/html-create-vendor-fields-page.php view: filters must return a string to be passed into include_once.
+		 *
+		 * @since 2.1.77
+		 *
+		 * @param string $path Default path to the view.
+		 */
+		include_once( apply_filters( 'wcpv_create_vendor_fields_page_template', 'views/html-create-vendor-fields-page.php' ) );
 
 		return true;
 	}
@@ -402,7 +413,7 @@ class WC_Product_Vendors_Store_Admin {
 		wp_enqueue_script( 'wc-enhanced-select' );
 		wp_enqueue_script( 'jquery-tiptip' );
 
-		$vendor_data = get_term_meta( $term->term_id, 'vendor_data', true );
+		$vendor_data = WC_Product_Vendors_Utils::get_vendor_data_by_id( $term->term_id );
 
 		$description          = ! empty( $vendor_data['description'] ) ? $vendor_data['description'] : '';
 		$notes                = ! empty( $vendor_data['notes'] ) ? $vendor_data['notes'] : '';
@@ -426,19 +437,11 @@ class WC_Product_Vendors_Store_Admin {
 			$tzstring = WC_Product_Vendors_Utils::get_default_timezone_string();
 		}
 
-		if ( ! empty( $admins ) ) {
-			if ( is_array( $vendor_data['admins'] ) ) {
-				$admin_ids = array_map( 'absint', $vendor_data['admins'] );
-			} else {
-				$admin_ids = array_filter( array_map( 'absint', explode( ',', $vendor_data['admins'] ) ) );
-			}
+		foreach ( $admins as $admin_id ) {
+			$admin = get_user_by( 'id', $admin_id );
 
-			foreach ( $admin_ids as $admin_id ) {
-				$admin = get_user_by( 'id', $admin_id );
-
-				if ( is_object( $admin ) ) {
-					$selected_admins[ $admin_id ] = esc_html( $admin->display_name ) . ' (#' . absint( $admin->ID ) . ') &ndash; ' . esc_html( $admin->user_email );
-				}
+			if ( is_object( $admin ) ) {
+				$selected_admins[ $admin_id ] = esc_html( $admin->display_name ) . ' (#' . absint( $admin->ID ) . ') &ndash; ' . esc_html( $admin->user_email );
 			}
 		}
 
@@ -450,7 +453,14 @@ class WC_Product_Vendors_Store_Admin {
 			$hide_remove_image_link = 'display:none;';
 		}
 
-		include_once( 'views/html-edit-vendor-fields-page.php' );
+		/**
+		 * Optionally override the views/html-edit-vendor-fields-page.php view: filters must return a string to be passed into include_once.
+		 *
+		 * @since 2.1.77
+		 *
+		 * @param string $path Default path to the view.
+		 */
+		include_once( apply_filters( 'wcpv_edit_vendor_fields_page_template', 'views/html-edit-vendor-fields-page.php' ) );
 
 		return true;
 	}
@@ -465,7 +475,7 @@ class WC_Product_Vendors_Store_Admin {
 	 */
 	public function save_vendor_fields( $term_id ) {
 		if ( ! empty( $_POST['vendor_data'] ) ) {
-			$posted_vendor_data    = $_POST['vendor_data'];
+			$posted_vendor_data    = wp_unslash( $_POST['vendor_data'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$sanitized_vendor_data = array();
 
 			foreach ( $posted_vendor_data as $data_key => $data_value ) {
@@ -514,7 +524,7 @@ class WC_Product_Vendors_Store_Admin {
 				$sanitized_vendor_data['admins'] = array();
 			}
 
-			update_term_meta( $term_id, 'vendor_data', $sanitized_vendor_data );
+			WC_Product_Vendors_Utils::set_vendor_data( $term_id, $sanitized_vendor_data );
 		}
 
 		WC_Product_Vendors_Utils::clear_vendor_error_list_transient();
@@ -541,7 +551,7 @@ class WC_Product_Vendors_Store_Admin {
 		}
 
 		// Ensure we have proper email data
-		$emails = explode( ',', $_POST['vendor_data']['email'] );
+		$emails = explode( ',', wp_unslash( $_POST['vendor_data']['email'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$errors = 0;
 
 		foreach ( $emails as $email ) {
@@ -588,7 +598,7 @@ class WC_Product_Vendors_Store_Admin {
 
 			// check all vendors to ensure they have an email associated
 			foreach ( $vendors as $vendor ) {
-				$vendor_data = get_term_meta( $vendor->term_id, 'vendor_data', true );
+				$vendor_data = WC_Product_Vendors_Utils::get_vendor_data_by_id( $vendor->term_id );
 
 				if ( empty( $vendor_data['email'] ) ) {
 					$errors[] = sprintf( '<a href="%1$s">%2$s</a>', get_edit_term_link( $vendor->term_id ), $vendor->name );
@@ -622,7 +632,7 @@ class WC_Product_Vendors_Store_Admin {
 				</p>
 			</div>
 
-			<?php
+		<?php
 		endif;
 	}
 
@@ -664,7 +674,7 @@ class WC_Product_Vendors_Store_Admin {
 	 * @return string $value
 	 */
 	public function render_vendor_columns( $value, $column_name, $term_id ) {
-		$vendor_data = get_term_meta( $term_id, 'vendor_data', true );
+		$vendor_data = WC_Product_Vendors_Utils::get_vendor_data_by_id( $term_id );
 
 		if ( 'vendor_id' === $column_name ) {
 			$value .= esc_html( $term_id );
@@ -761,7 +771,14 @@ class WC_Product_Vendors_Store_Admin {
 			$manage_customers = 'allow';
 		}
 
-		include_once( 'views/html-edit-user-profile-page.php' );
+		/**
+		 * Optionally override the views/html-edit-user-profile-page.php view: filters must return a string to be passed into include_once.
+		 *
+		 * @since 2.1.77
+		 *
+		 * @param string $path Default path to the view.
+		 */
+		include_once( apply_filters( 'wcpv_edit_user_profile_page_template', 'views/html-edit-user-profile-page.php' ) );
 
 		return true;
 	}
@@ -908,13 +925,13 @@ class WC_Product_Vendors_Store_Admin {
 		$commissions_list = new WC_Product_Vendors_Store_Admin_Commission_List( new WC_Product_Vendors_Commission( new WC_Product_Vendors_PayPal_MassPay ) );
 
 		$commissions_list->prepare_items();
-	?>
+		?>
 		<div class="wrap">
 
 			<h2><?php esc_html_e( 'Vendor Commission', 'woocommerce-product-vendors' ); ?>
 				<?php
 				if ( ! empty( $_REQUEST['s'] ) ) {
-					echo '<span class="subtitle">' . esc_html__( 'Search results for', 'woocommerce-product-vendors' ) . ' "' . sanitize_text_field( $_REQUEST['s'] ) . '"</span>';
+					echo '<span class="subtitle">' . esc_html__( 'Search results for', 'woocommerce-product-vendors' ) . ' "' . esc_html( wc_clean( wp_unslash( $_REQUEST['s'] ) ) ) . '"</span>';
 				}
 				?>
 			</h2>
@@ -927,7 +944,7 @@ class WC_Product_Vendors_Store_Admin {
 				<?php $commissions_list->display(); ?>
 			</form>
 		</div>
-	<?php
+		<?php
 		return true;
 	}
 
@@ -1227,7 +1244,9 @@ class WC_Product_Vendors_Store_Admin {
 
 			$sold_by = WC_Product_Vendors_Utils::get_sold_by_link( $item['product_id'] );
 
-			echo '<em class="wcpv-sold-by-order-details">' . apply_filters( 'wcpv_sold_by_text', __( 'Sold By:', 'woocommerce-product-vendors' ) ) . ' <a href="' . esc_url( $sold_by['link'] ) . '" title="' . esc_attr( $sold_by['name'] ) . '">' . $sold_by['name'] . '</a></em>';
+			echo '<em class="wcpv-sold-by-order-details">';
+			echo apply_filters( 'wcpv_sold_by_text', esc_html__( 'Sold By:', 'woocommerce-product-vendors' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo ' <a href="' . esc_url( $sold_by['link'] ) . '" title="' . esc_attr( $sold_by['name'] ) . '">' . esc_html( $sold_by['name'] ) . '</a></em>';
 		}
 	}
 
@@ -1288,7 +1307,7 @@ class WC_Product_Vendors_Store_Admin {
 				return;
 			}
 
-			$commission = WC_Product_Vendors_Utils::sanitize_commission( $_POST['_wcpv_product_commission'] );
+			$commission = WC_Product_Vendors_Utils::sanitize_commission( wp_unslash( $_POST['_wcpv_product_commission'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 			update_post_meta( $post_id, '_wcpv_product_commission', $commission );
 		}
@@ -1326,9 +1345,9 @@ class WC_Product_Vendors_Store_Admin {
 			echo '<div class="options_group show_if_variable show_if_booking">';
 			?>
 			<p class="wcpv-commission form-row form-row-first">
-				<label><?php echo esc_html__( 'Commission', 'woocommerce-product-vendors' ) . ' (' . $commission_type . ')'; ?>: <?php echo wc_help_tip( __( 'Enter a commission for this product variation.  Enter a positive number.', 'woocommerce-product-vendors' ) ); ?></label>
+				<label><?php echo esc_html__( 'Commission', 'woocommerce-product-vendors' ) . ' (' . esc_html( $commission_type ) . ')'; ?>: <?php echo wc_help_tip( esc_html__( 'Enter a commission for this product variation.  Enter a positive number.', 'woocommerce-product-vendors' ) ); ?></label>
 
-				<input type="number" name="_wcpv_product_variation_commission[<?php echo $loop; ?>]" value="<?php echo esc_attr( $commission ); ?>" placeholder="<?php echo esc_attr( $commission_placeholder ); ?>" step="any" min="0" />
+				<input type="number" name="_wcpv_product_variation_commission[<?php echo esc_attr( $loop ); ?>]" value="<?php echo esc_attr( $commission ); ?>" placeholder="<?php echo esc_attr( $commission_placeholder ); ?>" step="any" min="0" />
 			</p>
 			<?php
 			echo '</div>';
@@ -1352,7 +1371,7 @@ class WC_Product_Vendors_Store_Admin {
 				return;
 			}
 
-			$commission = WC_Product_Vendors_Utils::sanitize_commission( $_POST['_wcpv_product_commission'] );
+			$commission = WC_Product_Vendors_Utils::sanitize_commission( wp_unslash( $_POST['_wcpv_product_commission'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 			update_post_meta( $product_id, '_wcpv_product_commission', $commission );
 		}
@@ -1376,7 +1395,7 @@ class WC_Product_Vendors_Store_Admin {
 				return;
 			}
 
-			$commission = WC_Product_Vendors_Utils::sanitize_commission( $_POST['_wcpv_product_variation_commission'][ $i ] );
+			$commission = WC_Product_Vendors_Utils::sanitize_commission( wp_unslash( $_POST['_wcpv_product_variation_commission'][ $i ] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 			update_post_meta( $variation_id, '_wcpv_product_commission', $commission );
 		}
@@ -1513,7 +1532,7 @@ class WC_Product_Vendors_Store_Admin {
 			);
 			$product->update_meta_data(
 				'_wcpv_product_taxes',
-				! empty( $_POST['_wcpv_product_taxes'] ) ? $_POST['_wcpv_product_taxes'] : ''
+				wc_clean( wp_unslash( $_POST['_wcpv_product_taxes'] ?? '' ) )
 			);
 			$product->update_meta_data(
 				'_wcpv_product_split_tax',
@@ -1537,11 +1556,11 @@ class WC_Product_Vendors_Store_Admin {
 	 */
 	public function add_variation_vendor_bulk_edit() {
 		if ( ! WC_Product_Vendors_Utils::is_vendor() && current_user_can( 'manage_vendors' ) ) {
-	?>
+			?>
 			<optgroup label="<?php esc_attr_e( 'Vendor', 'woocommerce-product-vendors' ); ?>">
 				<option value="variable_vendor_commission"><?php esc_html_e( 'Commission', 'woocommerce-product-vendors' ); ?></option>
 			</optgroup>
-	<?php
+			<?php
 		}
 	}
 
@@ -1554,15 +1573,15 @@ class WC_Product_Vendors_Store_Admin {
 	 * @return json $found_vendors
 	 */
 	public function vendor_search_ajax() {
-		$nonce = $_GET['security'];
+		$nonce = wc_clean( wp_unslash( $_GET['security'] ) );
 
 		// bail if nonce don't check out
 		if ( ! wp_verify_nonce( $nonce, '_wcpv_vendor_search_nonce' ) ) {
-		     wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		if ( empty( $_GET['term'] ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		$term = (string) wc_clean( stripslashes( $_GET['term']['term'] ) );
@@ -1596,7 +1615,7 @@ class WC_Product_Vendors_Store_Admin {
 		?>
 		<label>
 			<span class="title"><?php esc_html_e( 'Pass Shipping to Vendor?', 'woocommerce-product-vendors' ); ?></span>
-				<span class="input-text-wrap">
+			<span class="input-text-wrap">
 					<select class="pass-shipping-tax" name="_wcpv_product_pass_shipping">
 					<?php
 					$options = array(
@@ -1715,19 +1734,19 @@ class WC_Product_Vendors_Store_Admin {
 			if ( ! empty( $_REQUEST['_wcpv_product_pass_shipping'] ) ) {
 				$product->update_meta_data(
 					'_wcpv_product_pass_shipping',
-					$_REQUEST['_wcpv_product_pass_shipping']
+					wc_clean( wp_unslash( $_REQUEST['_wcpv_product_pass_shipping'] ) )
 				);
 			}
 			if ( ! empty( $_REQUEST['_wcpv_product_taxes'] ) ) {
 				$product->update_meta_data(
 					'_wcpv_product_taxes',
-					$_POST['_wcpv_product_taxes']
+					wc_clean( wp_unslash( $_POST['_wcpv_product_taxes'] ) )
 				);
 			}
 			if ( ! empty( $_REQUEST['_wcpv_product_split_tax'] ) ) {
 				$product->update_meta_data(
 					'_wcpv_product_split_tax',
-					$_REQUEST['_wcpv_product_split_tax']
+					wc_clean( wp_unslash( $_REQUEST['_wcpv_product_split_tax'] ) )
 				);
 			}
 			$product->save();
@@ -1808,7 +1827,7 @@ class WC_Product_Vendors_Store_Admin {
 
 			$output .= '</label></div></fieldset>';
 
-			echo $output;
+			echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 	}
 
@@ -1866,12 +1885,12 @@ class WC_Product_Vendors_Store_Admin {
 			wc_delete_product_transients( $post_id );
 
 		} elseif ( ! empty( $_REQUEST['woocommerce_bulk_edit'] ) && ! empty( $_REQUEST['post'] ) ) {
-			foreach ( $_REQUEST['post'] as $post ) {
+			foreach ( array_map( 'absint', wp_unslash( $_REQUEST['post'] ) ) as $post ) {
 				// update the product term
-				wp_set_object_terms( absint( $post ), $term, WC_PRODUCT_VENDORS_TAXONOMY );
+				wp_set_object_terms( $post, $term, WC_PRODUCT_VENDORS_TAXONOMY );
 
 				// Clear transient
-				wc_delete_product_transients( absint( $post ) );
+				wc_delete_product_transients( $post );
 			}
 		}
 
@@ -1896,14 +1915,15 @@ class WC_Product_Vendors_Store_Admin {
 
 		// bail if nonce don't check out
 		if ( ! wp_verify_nonce( $nonce, '_wcpv_export_commissions_nonce' ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		$commission = new WC_Product_Vendors_Commission( new WC_Product_Vendors_PayPal_MassPay );
 
 		$query = $commission->csv_filtered_query( $order_id, $year, $month, $commission_status, $vendor_id );
 
-		echo $query;
+		// This will end up as URIencoded CSV file content that will be pushed as an anchor's href via jQuery.
+		echo $query; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		exit;
 	}
 
@@ -1920,7 +1940,7 @@ class WC_Product_Vendors_Store_Admin {
 
 		// bail if nonce don't check out
 		if ( ! wp_verify_nonce( $nonce, '_wcpv_export_unpaid_commissions_nonce' ) ) {
-			wp_die( __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
+			wp_die( esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ) );
 		}
 
 		$currency = get_woocommerce_currency();
@@ -1974,7 +1994,7 @@ class WC_Product_Vendors_Store_Admin {
 		// convert the array to string recursively
 		$commissions_data = implode( PHP_EOL, array_map( array( 'WC_Product_Vendors_Utils', 'convert2string' ), $commissions_data ) );
 
-		echo $commissions_data;
+		echo $commissions_data; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		exit;
 	}
 
@@ -1982,6 +2002,7 @@ class WC_Product_Vendors_Store_Admin {
 	 * Add debug tool button.
 	 *
 	 * @since 2.0.0
+	 * @since 2.2.0 Update "wcpv_clear_transients" action callback.
 	 * @version 2.0.35
 	 * @return array $tools
 	 */
@@ -1990,7 +2011,7 @@ class WC_Product_Vendors_Store_Admin {
 			'name'     => __( 'Product Vendors Transients', 'woocommerce-product-vendors' ),
 			'button'   => __( 'Clear all transients/cache', 'woocommerce-product-vendors' ),
 			'desc'     => __( 'This will clear all Product Vendors related transients/caches such as reports.', 'woocommerce-product-vendors' ),
-			'callback' => 'WC_Product_Vendors_Utils::clear_reports_transients',
+			'callback' => [ $this, 'clear_all_transients' ],
 		);
 
 		$tools['wcpv_delete_webhook'] = array(
@@ -2008,13 +2029,71 @@ class WC_Product_Vendors_Store_Admin {
 	 *
 	 * @access public
 	 * @since 2.0.0
-	 * @version 2.0.0
 	 * @return bool
+	 * @version 2.0.0
 	 */
 	public function clear_reports_transients() {
 		WC_Product_Vendors_Utils::clear_reports_transients();
 
 		return true;
+	}
+
+	/**
+	 * Delete all transients created by this add-on.
+	 *
+	 * This function handles "wcpv_clear_transients" action.
+	 *
+	 * Note: This function is for internal usage.
+	 *
+	 * @since 2.2.0
+	 * @return void
+	 */
+	public function clear_all_transients() {
+		$vendor_ids = get_terms(
+			WC_PRODUCT_VENDORS_TAXONOMY,
+			[
+				'fields'     => 'ids',
+				'hide_empty' => false
+			]
+		);
+
+		if ( ! $vendor_ids ) {
+			return;
+		}
+
+		foreach ( $vendor_ids as $vendor_id ) {
+			$transient_manager = WC_Product_Vendor_Transient_Manager::make( (int) $vendor_id );
+			$transient_manager->delete();
+		}
+
+		if ( class_exists( 'WC_Bookings' ) ) {
+			WC_Bookings_Cache::clear_cache();
+		}
+
+		WC_Product_Vendors_Utils::clear_vendor_error_list_transient();
+	}
+
+	/**
+	 * Maybe show a migrate admin storage notice.
+	 */
+	public function migrate_admin_storage_notice() {
+		// only show to admin users
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		if ( WC_Product_Vendors_Utils::is_vendor_admin_meta_storage_enabled() ) {
+			return;
+		}
+
+		$admin_storage     = new WC_Product_Vendors_Admin_Storage_Compatibility();
+		$migration_started = $admin_storage->is_migration_scheduled();
+
+		if ( isset( $_POST['wcpv_migrate_admin_storage_migrate'] ) && ! $migration_started ) {
+			$migration_started = $admin_storage->schedule_migration();
+		}
+
+		include_once( 'views/html-migrate-admin-storage-notice.php' );
 	}
 }
 

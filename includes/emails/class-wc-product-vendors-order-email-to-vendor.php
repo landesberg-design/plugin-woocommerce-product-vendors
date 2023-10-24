@@ -111,6 +111,20 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 
 				// Send email to each vendor.
 				foreach ( $vendors as $vendor_id => $data ) {
+					/**
+					 * Shall we send an order email to this vendor?
+					 * Defaults to true, but filters can override based on data e.g. the vendor term or order data.
+					 *
+					 * @since 2.1.80
+					 *
+					 * @param bool $send_email Send email to vendor?
+					 * @param array $data Vendor term data.
+					 * @param WC_Order $this->object Order object.
+					 */
+					if ( ! apply_filters( 'wcpv_email_order_details_to_vendor', true, $data, $this->object ) ) {
+						continue;
+					}
+
 					$this->vendor = $vendor_id;
 
 					$this->recipient = ! empty( $data['email'] ) ? $data['email'] : '';
@@ -348,7 +362,7 @@ class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 		<p>
 			<?php
 			/* translators: the amount in commission price */
-			echo sprintf( __( 'Your commission for this order is %s.', 'woocommerce-product-vendors' ), wc_price( $commission, array( 'currency' => get_woocommerce_currency() ) ) );
+			echo sprintf( esc_html__( 'Your commission for this order is %s.', 'woocommerce-product-vendors' ), wc_price( $commission, array( 'currency' => get_woocommerce_currency() ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			?>
 		</p>
 		<?php

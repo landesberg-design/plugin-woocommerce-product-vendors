@@ -52,7 +52,7 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 	public function prepare_items() {
 		global $wpdb;
 
-		// check if table exists before continuing
+		// Check if table exists before continuing.
 		if ( ! WC_Product_Vendors_Utils::commission_table_exists() ) {
 			return;
 		}
@@ -65,95 +65,62 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
 
-		$orderby = ! empty( $_REQUEST['orderby'] ) ? sanitize_text_field( $_REQUEST['orderby'] ) : 'order_id';
-		$order   = ( ! empty( $_REQUEST['order'] ) && 'asc' === $_REQUEST['order'] ) ? 'ASC' : 'DESC';
+		$items_per_page = $this->get_items_per_page( 'commissions_per_page', apply_filters( 'wcpv_commission_list_default_item_per_page', 20 ) ); // phpcs:ignore WooCommerce.Commenting.CommentHooks.MissingHookComment
+		$current_page   = $this->get_pagenum();
 
-		$items_per_page = $this->get_items_per_page( 'commissions_per_page', apply_filters( 'wcpv_commission_list_default_item_per_page', 20 ) );
+		$order_by       = ( ! empty( $_REQUEST['orderby'] ) ? sanitize_sql_orderby( wp_unslash( $_REQUEST['orderby'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$order_by       = ( $order_by && in_array( $order_by, array_keys( $sortable ), true ) ) ? $order_by : 'order_id';
+		$order_by_order = ( 'ASC' === strtoupper( wp_unslash( $_REQUEST['order'] ?? '' ) ) ) ? 'ASC' : 'DESC'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-		$current_page = $this->get_pagenum();
+		// Query args.
+		$sql_where = array();
 
-		$sql = 'SELECT COUNT(commission.id) FROM ' . WC_PRODUCT_VENDORS_COMMISSION_TABLE . ' AS commission';
+		// check if it is a search.
+		$search_arg = ! empty( $_REQUEST['s'] ) ? absint( $_REQUEST['s'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		$sql .= ' WHERE 1=1';
-
-		// check if it is a search
-		if ( ! empty( $_REQUEST['s'] ) ) {
-			$order_id = absint( $_REQUEST['s'] );
-
-			$sql .= " AND `order_id` = {$order_id}";
-
+		if ( $search_arg ) {
+			$sql_where[] = $wpdb->prepare( '`commission`.`order_id` = %d', $search_arg );
 		} else {
+			$m_arg = ! empty( $_REQUEST['m'] ) ? wp_unslash( $_REQUEST['m'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( $m_arg ) {
+				$year  = absint( substr( $m_arg, 0, 4 ) );
+				$month = absint( substr( $m_arg, 4, 2 ) );
 
-			if ( ! empty( $_REQUEST['m'] ) ) {
-
-				$year  = absint( substr( $_REQUEST['m'], 0, 4 ) );
-				$month = absint( substr( $_REQUEST['m'], 4, 2 ) );
-
-				$time_filter = " AND MONTH( commission.order_date ) = {$month} AND YEAR( commission.order_date ) = {$year}";
-
-				$sql .= $time_filter;
+				$sql_where[] = $wpdb->prepare( 'MONTH( `commission`.`order_date` ) = %d AND YEAR( `commission`.`order_date` ) = %d', $month, $year );
 			}
 
-			if ( ! empty( $_REQUEST['commission_status'] ) ) {
-				$commission_status = esc_sql( $_REQUEST['commission_status'] );
-
-				$status_filter = " AND commission.commission_status = '{$commission_status}'";
-
-				$sql .= $status_filter;
+			$status_arg = ! empty( $_REQUEST['commission_status'] ) ? wp_unslash( $_REQUEST['commission_status'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( $status_arg ) {
+				$sql_where[] = $wpdb->prepare( '`commission`.`commission_status` = %s', $status_arg );
 			}
 
-			if ( ! empty( $_REQUEST['vendor'] ) ) {
-				$vendor = absint( $_REQUEST['vendor'] );
-
-				$vendor_filter = " AND commission.vendor_id = '{$vendor}'";
-
-				$sql .= $vendor_filter;
+			$vendor_arg = ! empty( $_REQUEST['vendor'] ) ? absint( $_REQUEST['vendor'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			if ( $vendor_arg ) {
+				$sql_where[] = $wpdb->prepare( '`commission`.`vendor_id` = %d', $vendor_arg );
 			}
 		}
 
-		$total_items = $wpdb->get_var( $sql );
+		$sql_where = ( $sql_where ? ( ' WHERE ' . implode( ' AND ', $sql_where ) ) : '' );
 
-		$this->set_pagination_args( array(
-			'total_items' => (double) $total_items,
-			'per_page'    => $items_per_page,
-		) );
+		$total_items = absint(
+			$wpdb->get_var(
+				'SELECT COUNT(`commission`.`id`) FROM `' . WC_PRODUCT_VENDORS_COMMISSION_TABLE . "` AS `commission` $sql_where" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			)
+		);
+
+		$this->set_pagination_args(
+			array(
+				'total_items' => (float) $total_items,
+				'per_page'    => $items_per_page,
+			)
+		);
 
 		$offset = ( $current_page - 1 ) * $items_per_page;
 
-		$sql = 'SELECT * FROM ' . WC_PRODUCT_VENDORS_COMMISSION_TABLE . ' AS commission';
-
-		$sql .= ' WHERE 1=1';
-
-		// check if it is a search
-		if ( ! empty( $_REQUEST['s'] ) ) {
-			$order_id = absint( $_REQUEST['s'] );
-
-			$sql .= " AND commission.order_id = {$order_id}";
-
-		} else {
-
-			if ( ! empty( $_REQUEST['m'] ) ) {
-				$sql .= $time_filter;
-			}
-
-			if ( ! empty( $_REQUEST['commission_status'] ) ) {
-				$sql .= $status_filter;
-			}
-
-			if ( ! empty( $_REQUEST['vendor'] ) ) {
-				$sql .= $vendor_filter;
-			}
-		}
-
-		$sql .= " ORDER BY `{$orderby}` {$order}";
-
-		$sql .= " LIMIT {$items_per_page}";
-
-		$sql .= " OFFSET {$offset}";
-
-		$data = $wpdb->get_results( $sql );
-
-		$this->items = $data;
+		// Fetch items.
+		$this->items = $wpdb->get_results(
+			'SELECT * FROM `' . WC_PRODUCT_VENDORS_COMMISSION_TABLE . "` AS `commission` $sql_where ORDER BY `commission`.`$order_by` $order_by_order LIMIT $items_per_page OFFSET $offset" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+		);
 
 		return true;
 	}
@@ -246,21 +213,20 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 				$vendor            = '';
 
 				if ( ! empty( $_REQUEST['s'] ) ) {
-					$order_id = $_REQUEST['s'];
+					$order_id = absint( $_REQUEST['s'] );
 
 				} else {
 					if ( ! empty( $_REQUEST['m'] ) ) {
-
-						$year  = substr( $_REQUEST['m'], 0, 4 );
-						$month = substr( $_REQUEST['m'], 4, 2 );
+						$year  = filter_var( substr( $_REQUEST['m'], 0, 4 ), FILTER_SANITIZE_NUMBER_INT ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+						$month = filter_var( substr( $_REQUEST['m'], 4, 2 ), FILTER_SANITIZE_NUMBER_INT ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 					}
 
 					if ( ! empty( $_REQUEST['commission_status'] ) ) {
-						$commission_status = $_REQUEST['commission_status'];
+						$commission_status = wc_clean( wp_unslash( $_REQUEST['commission_status'] ) );
 					}
 
 					if ( ! empty( $_REQUEST['vendor'] ) ) {
-						$vendor = $_REQUEST['vendor'];
+						$vendor = absint( $_REQUEST['vendor'] );
 					}
 				}
 				?>
@@ -334,7 +300,7 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 					selected( $m, $year . $month, false ),
 					esc_attr( $arc_row->year . $month ),
 					/* translators: 1: month name, 2: 4-digit year */
-					sprintf( __( '%1$s %2$d', 'woocommerce-product-vendors' ), $wp_locale->get_month( $month ), $year )
+					esc_html( sprintf( __( '%1$s %2$d', 'woocommerce-product-vendors' ), $wp_locale->get_month( $month ), $year ) )
 				);
 			}
 			?>
@@ -375,23 +341,55 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 	public function vendors_dropdown( $post_type ) {
 		global $wpdb;
 
-		$vendor = isset( $_REQUEST['vendor'] ) ? sanitize_text_field( $_REQUEST['vendor'] ) : '';
+		$vendor_filter = isset( $_REQUEST['vendor'] ) ? sanitize_text_field( $_REQUEST['vendor'] ) : '';
 
 		$sql = 'SELECT DISTINCT vendor_name, vendor_id FROM ' . WC_PRODUCT_VENDORS_COMMISSION_TABLE;
 
 		$vendor_lists = $wpdb->get_results( $sql );
+		$vendor_ids   = array_unique( wp_list_pluck( $vendor_lists, 'vendor_id' ) );
+		_prime_term_caches( $vendor_ids, false );
+
+		/*
+		 * Update vendor names to use the current name in the database.
+		 *
+		 * If the vendor has been deleted then the name from the SQL query will be
+		 * used. This is to prevent the dropdown from being empty. If the vendor
+		 * name has changed then the dropdown will display the last version received
+		 * by the database query above.
+		 */
+		$unique_vendor_lists = array();
+		foreach ( $vendor_lists as $vendor_list ) {
+			$vendor_term = get_term( absint( $vendor_list->vendor_id ), WC_PRODUCT_VENDORS_TAXONOMY );
+
+			if ( ! is_wp_error( $vendor_term ) && is_object( $vendor_term ) ) {
+				$unique_vendor_lists[ $vendor_list->vendor_id ] = (object) array(
+					'vendor_name' => wp_strip_all_tags( $vendor_term->name ),
+					'vendor_id'   => $vendor_list->vendor_id,
+				);
+
+				continue;
+			}
+
+			$unique_vendor_lists[ $vendor_list->vendor_id ] = (object) array(
+				'vendor_name' => wp_strip_all_tags( $vendor_list->vendor_name ),
+				'vendor_id'   => $vendor_list->vendor_id,
+			);
+		}
+
+		// Sort the list by vendor name.
+		$unique_vendor_lists = wp_list_sort( $unique_vendor_lists, 'vendor_name', 'ASC', true );
 	?>
 		<select name="vendor">
-			<option <?php selected( $vendor, '' ); ?> value=""><?php esc_html_e( 'Show all Vendors', 'woocommerce-product-vendors' ); ?></option>
+			<option <?php selected( $vendor_filter, '' ); ?> value=""><?php esc_html_e( 'Show all Vendors', 'woocommerce-product-vendors' ); ?></option>
 
 			<?php
-			if ( ! empty( $vendor_lists ) && is_array( $vendor_lists ) ) {
-				foreach ( $vendor_lists as $vendor_list ) {
+			if ( ! empty( $unique_vendor_lists ) && is_array( $unique_vendor_lists ) ) {
+				foreach ( $unique_vendor_lists as $vendor_list ) {
 					if ( empty( $vendor_list->vendor_name ) || empty( $vendor_list->vendor_id ) ) {
 						continue;
 					}
 					?>
-					<option <?php selected( $vendor, $vendor_list->vendor_id ); ?> value="<?php echo esc_attr( $vendor_list->vendor_id ); ?>"><?php echo esc_html( $vendor_list->vendor_name ); ?></option>
+					<option <?php selected( $vendor_filter, $vendor_list->vendor_id ); ?> value="<?php echo esc_attr( $vendor_list->vendor_id ); ?>"><?php echo esc_html( $vendor_list->vendor_name ); ?></option>
 					<?php
 				}
 			}
@@ -436,18 +434,20 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 	 * @return mixed
 	 */
 	public function column_cb( $item ) {
-		return sprintf( '<input type="checkbox" name="ids[%d]" value="%d" />', $item->id, $item->order_item_id );
+		return sprintf( '<input type="checkbox" name="ids[%d]" value="%d" />', esc_attr( $item->id ), esc_attr( $item->order_item_id ) );
 	}
 
 	/**
 	 * Defines what data to show on each column
 	 *
-	 * @access public
-	 * @since 2.0.0
-	 * @version 2.0.0
-	 * @param array $item
+	 * @since   2.0.0
+	 * @since   2.1.77 Use WC_Product_Vendors_Utils::get_total_commission_amount_html to display vendor commission.
+	 *
+	 * @param \stdClass  $item
 	 * @param string $column_name
+	 *
 	 * @return mixed
+	 * @version 2.0.0
 	 */
 	public function column_default( $item, $column_name ) {
 		$order = wc_get_order( absint( $item->order_id ) );
@@ -555,25 +555,8 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 				if ( ! is_a( $order, 'WC_Order' ) ) {
 					return __( 'N/A', 'woocommerce-product-vendors' );
 				}
-				$refund          = '';
-				$refunded_amount = $order->get_total_refunded_for_item( intval( $item->order_item_id ) );
 
-				if ( ! $item->total_commission_amount && 'void' !== $item->commission_status ) {
-					$refund = sprintf(
-					/* translators: 1. commission refund status label */
-						'<br><small class="wpcv-refunded">%1$s</small>',
-						esc_html__( 'Fully Refunded', 'woocommerce-product-vendors' )
-					);
-				} elseif ( $refunded_amount ) {
-					$refunded_commission = $refunded_amount * $item->product_commission_amount / $item->product_amount;
-
-					$refund = sprintf(
-						'<br /><small class="wpcv-refunded">-%1$s</small>',
-						wc_price( $refunded_commission )
-					);
-				}
-
-				return wc_price( sanitize_text_field( $item->total_commission_amount ) ) . $refund;
+				return WC_Product_Vendors_Utils::get_total_commission_amount_html( $item, $order );
 
 			case 'commission_status' :
 				$status = __( 'N/A', 'woocommerce-product-vendors' );
@@ -665,7 +648,7 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 	 * @return bool
 	 */
 	public function no_items() {
-		_e( 'No commissions found.', 'woocommerce-product-vendors' );
+		esc_html_e( 'No commissions found.', 'woocommerce-product-vendors' );
 
 		return true;
 	}
@@ -701,7 +684,7 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 	 * @return void
 	 */
 	public function process_bulk_action() {
-		if ( empty( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'bulk-commissions' ) ) {
+		if ( ! wp_verify_nonce( wp_unslash( $_REQUEST['_wpnonce'] ?? '' ), 'bulk-commissions' ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			return;
 		}
 
@@ -823,14 +806,10 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 	public function print_column_headers( $with_id = true ) {
 		list( $columns, $hidden, $sortable ) = $this->get_column_info();
 
-		$current_url = set_url_scheme( 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] );
+		$current_url = set_url_scheme( 'http://' . wp_unslash( $_SERVER['HTTP_HOST'] ) . wp_unslash( $_SERVER['REQUEST_URI'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$current_url = remove_query_arg( 'paged', $current_url );
 
-		if ( isset( $_REQUEST['orderby'] ) ) {
-			$current_orderby = $_REQUEST['orderby'];
-		} else {
-			$current_orderby = '';
-		}
+		$current_orderby = wc_clean( wp_unslash( $_REQUEST['orderby'] ?? '' ) );
 
 		if ( isset( $_REQUEST['order'] ) && 'desc' == $_REQUEST['order'] ) {
 			$current_order = 'desc';
@@ -856,7 +835,7 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 				$style = 'display:none;';
 			}
 
-			$style = ' style="' . $style . '"';
+			$style = ' style="' . esc_attr( $style ) . '"';
 
 			if ( 'cb' == $column_key ) {
 				$class[] = 'check-column';
@@ -867,7 +846,7 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 			if ( isset( $sortable[ $column_key ] ) ) {
 				list( $orderby, $desc_first ) = $sortable[ $column_key ];
 
-				if ( $current_orderby == $orderby ) {
+				if ( $current_orderby === $orderby ) {
 					$order = 'asc' == $current_order ? 'desc' : 'asc';
 					$class[] = 'sorted';
 					$class[] = $current_order;
@@ -877,16 +856,16 @@ class WC_Product_Vendors_Store_Admin_Commission_List extends WP_List_Table {
 					$class[] = $desc_first ? 'asc' : 'desc';
 				}
 
-				$column_display_name = '<a href="' . esc_url( add_query_arg( compact( 'orderby', 'order' ), $current_url ) ) . '"><span>' . $column_display_name . '</span><span class="sorting-indicator"></span></a>';
+				$column_display_name = '<a href="' . esc_url( add_query_arg( compact( 'orderby', 'order' ), $current_url ) ) . '"><span>' . esc_html( $column_display_name ) . '</span><span class="sorting-indicator"></span></a>';
 			}
 
-			$id = $with_id ? "id='$column_key'" : '';
+			$id = $with_id ? "id='" . esc_attr( $column_key ) . "'" : '';
 
 			if ( ! empty( $class ) ) {
-				$class = "class='" . join( ' ', $class ) . "'";
+				$class = "class='" . esc_attr( join( ' ', $class ) ) . "'";
 			}
 
-			echo "<th scope='col' $id $class $style>$column_display_name</th>";
+			echo "<th scope='col' $id $class $style>$column_display_name</th>"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		return true;

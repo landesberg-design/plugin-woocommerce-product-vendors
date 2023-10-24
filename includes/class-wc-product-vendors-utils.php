@@ -219,7 +219,9 @@ class WC_Product_Vendors_Utils {
 
 		$vendor_term = get_term_by( 'id', $vendor_id, WC_PRODUCT_VENDORS_TAXONOMY );
 
-		if ( $vendor_data && $vendor_term ) {
+		$vendor_data = ( ! is_array( $vendor_data ) ) ? array() : $vendor_data;
+
+		if ( $vendor_term ) {
 			$vendor_data['term_id']          = $vendor_term->term_id;
 			$vendor_data['name']             = $vendor_term->name;
 			$vendor_data['slug']             = $vendor_term->slug;
@@ -229,9 +231,53 @@ class WC_Product_Vendors_Utils {
 			$vendor_data['description']      = $vendor_term->description;
 			$vendor_data['parent']           = $vendor_term->parent;
 			$vendor_data['count']            = $vendor_term->count;
+
+
+			$vendor_admins = $vendor_data['admins'] ?? null;
+			if ( self::is_vendor_admin_meta_storage_enabled() ) {
+				$admin_ids = self::get_vendor_admins( $vendor_id );
+			} else if ( is_array( $vendor_admins ) ) {
+				$admin_ids = array_filter( array_map( 'absint', $vendor_admins ) );
+			} else {
+				$admin_ids = array_filter( array_map( 'absint', explode( ',', $vendor_admins ) ) );
+			}
+			$vendor_data['admins'] = $admin_ids;
 		}
 
 		return apply_filters( 'wcpv_get_vendor_data_by_id', $vendor_data ?? array() , $vendor_id );
+	}
+
+	/**
+	 * Sets the data for a specific vendor
+	 *
+	 * @access public
+	 * @since future
+	 * @version future
+	 * @param int $vendor_id
+	 * @param array $vendor_data
+	 * @return bool
+	 */
+	public static function set_vendor_data( $vendor_id, $vendor_data ) {
+		if ( empty( $vendor_data['admins'] ) ) {
+			$vendor_data['admins'] = array();
+		} else if ( ! is_array( $vendor_data['admins'] ) ) {
+			$vendor_data['admins'] = [
+				$vendor_data['admins'],
+			];
+		}
+
+		if ( ! update_term_meta( $vendor_id, 'vendor_data', $vendor_data ) ) {
+			return false;
+		}
+
+		if ( self::is_vendor_admin_meta_storage_enabled() ) {
+			return self::update_vendor_admins(
+				$vendor_id,
+				array_map( 'absint', $vendor_data['admins'] )
+			);
+		}
+
+		return true;
 	}
 
 	/**
@@ -254,7 +300,22 @@ class WC_Product_Vendors_Utils {
 			return $vendors;
 		}
 
-		$terms = get_terms( WC_PRODUCT_VENDORS_TAXONOMY, array( 'hide_empty' => false ) );
+		$args = array(
+			'taxonomy'   => WC_PRODUCT_VENDORS_TAXONOMY,
+			'hide_empty' => false,
+		);
+
+		if ( self::is_vendor_admin_meta_storage_enabled() ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => '_wcpv_admin_id',
+					'value'   => $user_id,
+					'compare' => '=',
+				),
+			);
+		}
+
+		$terms = get_terms( $args );
 
 		$vendor_data = array();
 
@@ -264,16 +325,10 @@ class WC_Product_Vendors_Utils {
 
 		// loop through to see which one has assigned passed in user
 		foreach ( $terms as $term ) {
-			$vendor_data = get_term_meta( $term->term_id, 'vendor_data', true );
+			$vendor_data = self::get_vendor_data_by_id( $term->term_id );
 
 			if ( ! empty( $vendor_data['admins'] ) ) {
-				if ( is_array( $vendor_data['admins'] ) ) {
-					$admin_ids = array_map( 'absint', $vendor_data['admins'] );
-				} else {
-					$admin_ids = array_filter( array_map( 'absint', explode( ',', $vendor_data['admins'] ) ) );
-				}
-
-				if ( in_array( $user_id, $admin_ids ) ) {
+				if ( self::is_vendor_admin_meta_storage_enabled() || in_array( $user_id, $vendor_data['admins'] ) ) {
 					$vendor_data['term_id']          = $term->term_id;
 					$vendor_data['name']             = $term->name;
 					$vendor_data['slug']             = $term->slug;
@@ -327,7 +382,7 @@ class WC_Product_Vendors_Utils {
 				return false;
 			}
 
-			$vendor_data = get_term_meta( $term->term_id, 'vendor_data', true );
+			$vendor_data = self::get_vendor_data_by_id( $term->term_id );
 
 			if ( is_array( $vendor_data['admins'] ) ) {
 				$admin_ids = array_map( 'absint', $vendor_data['admins'] );
@@ -599,9 +654,9 @@ class WC_Product_Vendors_Utils {
 
 		$rating_html = '<small style="display:block;">' . esc_html__( 'Average Vendor Rating', 'woocommerce-product-vendors' ) . '</small>';
 
-		$rating_html .= '<div class="wcpv-star-rating star-rating" title="' . sprintf( esc_attr__( 'Rated %s out of 5', 'woocommerce-product-vendors' ), $rating ) . '">';
+		$rating_html .= '<div class="wcpv-star-rating star-rating" title="' . esc_attr( sprintf( __( 'Rated %s out of 5', 'woocommerce-product-vendors' ), $rating ) ) . '">';
 
-		$rating_html .= '<span style="width:' . ( ( $rating / 5 ) * 100 ) . '%"><strong class="rating">' . $rating . '</strong> ' . esc_html__( 'out of 5', 'woocommerce-product-vendors' ) . '</span>';
+		$rating_html .= '<span style="width:' . ( ( $rating / 5 ) * 100 ) . '%"><strong class="rating">' . esc_html( $rating ) . '</strong> ' . esc_html__( 'out of 5', 'woocommerce-product-vendors' ) . '</span>';
 
 		$rating_html .= '</div>';
 
@@ -1402,22 +1457,16 @@ class WC_Product_Vendors_Utils {
 	}
 
 	/**
-	 * Clears all reports transients
+	 * Clears all reports transients for vendor
 	 *
 	 * @access public
 	 * @since 2.0.0
-	 * @version 2.0.0
+	 * @since 2.2.0 Use vendor report transient manager to clear transient.
 	 * @return bool
+	 * @version 2.0.0
 	 */
 	public static function clear_reports_transients() {
-		global $wpdb;
-
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%wcpv_reports%'" );
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%wcpv_unfulfilled_products%'" );
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%book_dr%'" );
-
-		self::clear_low_stock_transient();
-		self::clear_out_of_stock_transient();
+		WC_Product_Vendor_Transient_Manager::make()->delete();
 
 		return true;
 	}
@@ -1425,18 +1474,33 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Clear low stock transient.
 	 *
+	 * @deprecated x.x.x
+	 *
 	 * @since 2.1.15
 	 */
 	public static function clear_low_stock_transient() {
+		_deprecated_function(
+			__FUNCTION__,
+			'x.x.x',
+			'WC_Product_Vendor_Transient_Manager::make()->delete()'
+		);
 		delete_transient( 'wcpv_reports_wg_lowstock_' . self::get_logged_in_vendor() );
 	}
 
 	/**
 	 * Clear out of stock transient.
 	 *
+	 * @deprecated x.x.x
+	 *
 	 * @since 2.1.15
 	 */
 	public static function clear_out_of_stock_transient() {
+		_deprecated_function(
+			__FUNCTION__,
+			'x.x.x',
+			'WC_Product_Vendor_Transient_Manager::make()->delete()'
+		);
+
 		delete_transient( 'wcpv_reports_wg_nostock_' . self::get_logged_in_vendor() );
 	}
 
@@ -1476,7 +1540,8 @@ class WC_Product_Vendors_Utils {
 	 * @return bool
 	 */
 	public static function is_bookings_enabled( $user_id = null ) {
-		$vendor_data = get_term_meta( intval( self::get_user_active_vendor( $user_id ) ), 'vendor_data', true );
+		$vendor_id   = self::get_user_active_vendor( $user_id );
+		$vendor_data = self::get_vendor_data_by_id( $vendor_id );
 
 		if ( ! empty( $vendor_data['enable_bookings'] ) && 'yes' === $vendor_data['enable_bookings'] && class_exists( 'WC_Bookings' ) ) {
 			return true;
@@ -1528,7 +1593,7 @@ class WC_Product_Vendors_Utils {
 	 * @return string
 	 */
 	public static function get_paypal_webhook_notification_url() {
-		return add_query_arg( 'wc-api', 'wc_product_vendors_paypal', trailingslashit( get_home_url() ) );
+		return esc_url_raw( add_query_arg( 'wc-api', 'wc_product_vendors_paypal', trailingslashit( get_home_url() ) ) ); // nosemgrep:audit.php.wp.security.xss.query-arg
 	}
 
 	/**
@@ -1591,6 +1656,104 @@ class WC_Product_Vendors_Utils {
 	}
 
 	/**
+	 * Set a vendor admin user
+	 *
+	 * @since future
+	 * @version future
+	 * @param int $vendor_id
+	 * @param int $user_id
+	 * return bool
+	 */
+	public static function set_vendor_admin( $vendor_id, $user_id ) {
+		if ( self::is_vendor_admin( $vendor_id, $user_id ) ) {
+			return true;
+		}
+		return add_term_meta( $vendor_id, '_wcpv_admin_id', $user_id );
+	}
+
+	/**
+	 * Update vendor admin users
+	 *
+	 * @since future
+	 * @version future
+	 * @param int $vendor_id
+	 * @param array $user_ids
+	 * return bool
+	 */
+	public static function update_vendor_admins( $vendor_id, $user_ids ) {
+		$old_admins = self::get_vendor_admins( $vendor_id );
+
+		$admins_to_add    = array_diff( $user_ids, $old_admins );
+		$admins_to_remove = array_diff( $old_admins, $user_ids );
+
+		foreach ( $admins_to_add as $admin_id ) {
+			self::set_vendor_admin( $vendor_id, $admin_id );
+		}
+
+		foreach ( $admins_to_remove as $admin_id ) {
+			self::remove_vendor_admin( $vendor_id, $admin_id );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Remove a vendor admin user
+	 *
+	 * @since future
+	 * @version future
+	 * @param int $vendor_id
+	 * @param int $user_id
+	 * return bool
+	 */
+	public static function remove_vendor_admin( $vendor_id, $user_id ) {
+		return delete_term_meta( $vendor_id, '_wcpv_admin_id', $user_id );
+	}
+
+	/**
+	 * Get a vendor admin users
+	 *
+	 * @since future
+	 * @version future
+	 * @param int $vendor_id
+	 * return array
+	 */
+	public static function get_vendor_admins( $vendor_id ) {
+		$admins = get_term_meta( $vendor_id, '_wcpv_admin_id' );
+
+		if ( empty( $admins ) ) {
+			return array();
+		}
+
+		return array_map( 'absint', $admins );
+	}
+
+	/**
+	 * Check if a user is a vendor admin
+	 *
+	 * @since future
+	 * @version future
+	 * @param int $vendor_id
+	 * @param int $user_id
+	 * return bool
+	 */
+	public static function is_vendor_admin( $vendor_id, $user_id ) {
+		$admins = self::get_vendor_admins( $vendor_id );
+		return in_array( $user_id, $admins );
+	}
+
+	/**
+	 * Check if the site uses term meta to store vendor admin instead of the vendor data object.
+	 *
+	 * @since future
+	 * @version future
+	 * @return bool
+	 */
+	public static function is_vendor_admin_meta_storage_enabled() {
+		return '1' === get_option( 'wcpv_admin_storage_migrated' );
+	}
+
+	/**
 	 * Should return date SQL query part from date range for commission table.
 	 *
 	 * @since 2.1.76
@@ -1602,6 +1765,8 @@ class WC_Product_Vendors_Utils {
 	 * @return string
 	 */
 	public static function get_commission_date_sql_query_from_range( $range, $start_date = '', $end_date = '' ) {
+		global $wpdb;
+
 		$sql = '';
 
 		switch ( $range ) {
@@ -1620,7 +1785,7 @@ class WC_Product_Vendors_Utils {
 				break;
 
 			case 'custom' :
-				$sql .= " AND DATE( commission.order_date ) BETWEEN '" . $start_date . "' AND '" . $end_date . "'";
+				$sql .= $wpdb->prepare( ' AND DATE( commission.order_date ) BETWEEN %s AND %s', $start_date, $end_date );
 				break;
 
 			case '7day' :
@@ -1653,7 +1818,7 @@ class WC_Product_Vendors_Utils {
 
 	/* * Calculate the total tax refunded for a line item.
 	 *
-	 * @since x.x.x
+	 * @since 2.1.74
 	 *
 	 * @param WC_Order_Item $item  Order item id.
 	 * @param WC_Order      $order Order.
@@ -1673,7 +1838,7 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Gets the count of order items (only need shipping).
 	 *
-	 * @since x.x.x
+	 * @since 2.1.74
 	 *
 	 * @param WC_Order $order Order object.
 	 *
@@ -1697,7 +1862,7 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Gets the count of refunded order items (only need shipping).
 	 *
-	 * @since x.x.x
+	 * @since 2.1.74
 	 *
 	 * @param WC_Order $order Order object.
 	 *
@@ -1725,7 +1890,7 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Calculate the total shipping charges for refunded order item.
 	 *
-	 * @since x.x.x
+	 * @since 2.1.74
 	 *
 	 * @return array
 	 */
@@ -1796,5 +1961,57 @@ class WC_Product_Vendors_Utils {
 				wc_get_rounding_precision()
 			),
 		];
+	}
+
+	/**
+	 * This function should return HTML about vendor commission amount with refunded amount.
+	 * We use this function to show vendor commission details in store commission list, vendor order list and  vendor order details page.
+	 *
+	 * @since 2.1.77
+	 *
+	 * @return string
+	 */
+	public static function get_total_commission_amount_html( \stdClass $commission, WC_Order $order ) {
+		$vendor_order_item_commission = get_post_meta(
+			$commission->order_id,
+			"_wcpv_commission_{$commission->id}_amount",
+			true
+		);
+		$total_commission_amount      = $commission->total_commission_amount ?: '0';
+
+		// Check if the commission has been fully refunded.
+		if ( ! $total_commission_amount && 'void' !== $commission->commission_status ) {
+			return sprintf(
+			/* translators: 1. commission refund status label */
+				'%2$s<br><small class="wpcv-refunded">%1$s</small>',
+				esc_html__( 'Fully Refunded', 'woocommerce-product-vendors' ),
+				wc_price( $total_commission_amount ) ?: ''
+			);
+		}
+
+		if ( $vendor_order_item_commission ) {
+			// New logic to calculate refunded commission
+			// total commission amount stores in each order item meta.
+			// We can reduce order item commission from this meta value to calculate refunded commission.
+			$refunded_commission = $vendor_order_item_commission - $total_commission_amount;
+		} else {
+			// Old logic to calculate refunded commission
+			$product_commission_amount = $commission->product_commission_amount ?: '0';
+			$product_amount            = $commission->product_amount ?: '0';
+			$refunded_amount           = $order->get_total_refunded_for_item( (int) $commission->order_item_id );
+			$refunded_commission       = ! empty( $product_amount ) ? ( $refunded_amount * $product_commission_amount / $product_amount ) : 0;
+		}
+
+		$refund = empty( $refunded_commission ) ?
+			'' :
+			sprintf(
+				__(
+					'<br /><small class="wpcv-refunded">-%s</small>',
+					'woocommerce-product-vendors'
+				),
+				wc_price( $refunded_commission )
+			);
+
+		return wc_price( sanitize_text_field( $commission->total_commission_amount ) ) . $refund;
 	}
 }

@@ -83,6 +83,7 @@ class WC_Product_Vendors_Bookings {
 		add_filter( 'map_meta_cap', array( $this, 'map_vendor_capabilities' ), 10, 4 );
 
 		// Filter view booking order URL.
+		add_filter( 'woocommerce_get_edit_order_url', array( $this, 'filter_edit_order_url' ), 10, 2 );
 		add_filter( 'woocommerce_bookings_admin_view_order_url', array( $this, 'admin_view_order_url' ), 10, 3 );
 
 		return true;
@@ -230,10 +231,15 @@ class WC_Product_Vendors_Bookings {
 	 * Renders the bookings dashboard widgets for vendors
 	 *
 	 * @since 2.0.0
+	 * @since 2.2.0 Use WC_Product_Vendor_Transient_Manager class to manage transient data.
 	 * @version 2.0.0
 	 */
 	public function render_bookings_dashboard_widget() {
-		if ( false === ( $bookings = get_transient( 'wcpv_reports_bookings_wg_' . WC_Product_Vendors_Utils::get_logged_in_vendor() ) ) ) {
+		$vendor_report_transient_manager = WC_Product_Vendor_Transient_Manager::make();
+		$transient_name                  = 'wg_bookings';
+		$bookings                        = $vendor_report_transient_manager->get( $transient_name );
+
+		if ( ! $bookings ) {
 			$args = array(
 				'post_type'      => 'wc_booking',
 				'posts_per_page' => 20,
@@ -247,11 +253,11 @@ class WC_Product_Vendors_Bookings {
 				$bookings = array_filter( $bookings, array( $this, 'filter_booking_products' ) );
 			}
 
-			set_transient( 'wcpv_reports_bookings_wg_' . WC_Product_Vendors_Utils::get_logged_in_vendor(), $bookings, DAY_IN_SECONDS );
+			$vendor_report_transient_manager->save( $transient_name, $bookings );
 		}
 
 		if ( empty( $bookings ) ) {
-			echo '<p>' . __( 'There are no bookings available.', 'woocommerce-product-vendors' ) . '</p>';
+			echo '<p>' . esc_html__( 'There are no bookings available.', 'woocommerce-product-vendors' ) . '</p>';
 
 			return;
 		}
@@ -276,14 +282,14 @@ class WC_Product_Vendors_Bookings {
 					$booking_item = get_wc_booking( $booking->ID );
 					?>
 					<tr>
-						<td><a href="<?php echo get_edit_post_link( $booking->ID ); ?>" title="<?php esc_attr_e( 'Edit Booking', 'woocommerce-product-vendors' ); ?>"><?php printf( __( 'Booking #%d', 'woocommerce-product-vendors' ), $booking->ID ); ?></a></td>
+						<td><a href="<?php echo esc_url( get_edit_post_link( $booking->ID ) ); ?>" title="<?php esc_attr_e( 'Edit Booking', 'woocommerce-product-vendors' ); ?>"><?php printf( esc_html__( 'Booking #%d', 'woocommerce-product-vendors' ), esc_html( $booking->ID ) ); ?></a></td>
 
-						<td><a href="<?php echo get_edit_post_link( $booking_item->get_product()->get_id() ); ?>" title="<?php esc_attr_e( 'Edit Product', 'woocommerce-product-vendors' ); ?>"><?php echo $booking_item->get_product()->get_name(); ?></a></td>
+						<td><a href="<?php echo esc_url( get_edit_post_link( $booking_item->get_product()->get_id() ) ); ?>" title="<?php esc_attr_e( 'Edit Product', 'woocommerce-product-vendors' ); ?>"><?php echo esc_html( $booking_item->get_product()->get_name() ); ?></a></td>
 
 						<td>
 							<?php
 							if ( $booking_item->has_persons() ) {
-								echo $booking_item->get_persons_total();
+								echo esc_html( $booking_item->get_persons_total() );
 							} else {
 								esc_html_e( 'N/A', 'woocommerce-product-vendors' );
 							}
@@ -293,9 +299,9 @@ class WC_Product_Vendors_Bookings {
 						<td>
 							<?php
 							if ( $booking_item->get_customer() ) {
-							?>
-								<a href="mailto:<?php echo esc_attr( $booking_item->get_customer()->email ); ?>"><?php echo $booking_item->get_customer()->name; ?></a>
-							<?php
+								?>
+								<a href="mailto:<?php echo esc_attr( $booking_item->get_customer()->email ); ?>"><?php echo esc_html( $booking_item->get_customer()->name ); ?></a>
+								<?php
 							} else {
 								esc_html_e( 'N/A', 'woocommerce-product-vendors' );
 							}
@@ -306,7 +312,7 @@ class WC_Product_Vendors_Bookings {
 							<?php
 							if ( $booking_item->get_order() ) {
 							?>
-								<a href="<?php echo admin_url( 'admin.php?page=wcpv-vendor-order&id=' . $booking_item->order_id ); ?>" title="<?php esc_attr_e( 'Order Detail', 'woocommerce-product-vendors' ); ?>"><?php printf( __( '#%d', 'woocommerce-product-vendors' ), $booking_item->order_id ); ?></a> &mdash; <?php echo WC_Product_Vendors_Utils::format_order_status( $booking_item->get_order()->get_status() ); ?>
+								<a href="<?php echo esc_url( admin_url( 'admin.php?page=wcpv-vendor-order&id=' . $booking_item->order_id ) ); ?>" title="<?php esc_attr_e( 'Order Detail', 'woocommerce-product-vendors' ); ?>"><?php printf( esc_html__( '#%d', 'woocommerce-product-vendors' ), esc_html( $booking_item->order_id ) ); ?></a> &mdash; <?php esc_html_e( WC_Product_Vendors_Utils::format_order_status( $booking_item->get_order()->get_status() ) ); ?>
 							<?php
 							} else {
 								esc_html_e( 'N/A', 'woocommerce-product-vendors' );
@@ -314,8 +320,8 @@ class WC_Product_Vendors_Bookings {
 							?>
 						</td>
 
-						<td><?php echo $booking_item->get_start_date(); ?></td>
-						<td><?php echo $booking_item->get_end_date(); ?></td>
+						<td><?php echo esc_html( $booking_item->get_start_date() ); ?></td>
+						<td><?php echo esc_html( $booking_item->get_end_date() ); ?></td>
 					</tr>
 					<?php
 				}
@@ -573,16 +579,15 @@ class WC_Product_Vendors_Bookings {
 	}
 
 	/**
-	 * Clears the recent bookings cache on dashboard
+	 * Should clear vendor transient cache.
 	 *
 	 * @since 2.0.21
+	 * @since 2.2.0 Use WC_Product_Vendor_Transient_Manager class to delete transient data.
 	 * @version 2.0.21
 	 * @return bool
 	 */
 	public function clear_recent_bookings_cache_on_create() {
-		global $wpdb;
-
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%wcpv_reports_bookings_wg%'" );
+		WC_Product_Vendor_Transient_Manager::make()->delete();
 
 		return true;
 	}
@@ -591,6 +596,7 @@ class WC_Product_Vendors_Bookings {
 	 * Clears the recent bookings cache on dashboard
 	 *
 	 * @since 2.0.21
+	 * @sicne x.x.x Use WC_Product_Vendor_Transient_Manager class to delete transient data.
 	 * @version 2.0.21
 	 * @return bool
 	 */
@@ -601,7 +607,7 @@ class WC_Product_Vendors_Bookings {
 			return;
 		}
 
-		$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%wcpv_reports_bookings_wg%'" );
+		WC_Product_Vendor_Transient_Manager::make()->delete();
 
 		return true;
 	}
@@ -610,12 +616,13 @@ class WC_Product_Vendors_Bookings {
 	 * Clears the bookings query cache on page load
 	 *
 	 * @since 2.0.1
+	 * @since 2.2.0 Use WC_Booking_Cache class to delete booking cache.
 	 * @since 2.1.70  Add condition to prevent PHP warning. Access property from valid $current_screen (WP_Screen object)
 	 * @version 2.0.1
 	 * @return bool
 	 */
 	public function clear_bookings_cache() {
-		global $wpdb, $typenow, $current_screen;
+		global $typenow, $current_screen;
 
 		if (
 			'wc_booking' === $typenow &&
@@ -626,10 +633,56 @@ class WC_Product_Vendors_Bookings {
 				'wc_booking_page_booking_calendar' === $current_screen->id
 			)
 		) {
-			$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%book_dr%'" );
+			WC_Bookings_Cache::clear_cache();
 		}
 
 		return true;
+	}
+
+	/**
+	 * Filter the edit order URL when viewing a booking.
+	 *
+	 * Replaces the edit order URL with a link to the vendor view page when the
+	 * vendor does not have permission to edit the order.
+	 *
+	 * @since 2.2.0
+	 *
+	 * @param string   $edit_url URL where we can edit the order.
+	 * @param WC_Order $order    Order object.
+	 * @return string  Filtered URL pointing to vendor page.
+	 */
+	public function filter_edit_order_url( $edit_url, $order ) {
+		if ( ! WC_Product_Vendors_Utils::is_bookings_enabled() ) {
+			return $edit_url;
+		}
+
+		if ( ! $order instanceof WC_Order ) {
+			return $edit_url;
+		}
+
+		if ( ! is_admin() ) {
+			return $edit_url;
+		}
+
+		// Most likely an admin, no need to change.
+		if ( ! WC_Product_Vendors_Utils::is_vendor() || current_user_can( 'manage_options' ) ) {
+			return $edit_url;
+		}
+
+		if ( preg_match( '/\bpost=(\d+)/', $edit_url, $matches ) ) {
+			// check the post type.
+			$post = get_post( $matches[1] );
+
+			if ( current_user_can( 'edit_post', $post->ID ) ) {
+				return $edit_url;
+			}
+
+			if ( 'shop_order' === $post->post_type ) {
+				return admin_url( 'admin.php?page=wcpv-vendor-order&id=' . $post->ID );
+			}
+		}
+
+		return $edit_url;
 	}
 
 	/**

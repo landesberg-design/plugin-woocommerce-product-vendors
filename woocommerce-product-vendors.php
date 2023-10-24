@@ -1,16 +1,16 @@
 <?php
 /**
  * Plugin Name: WooCommerce Product Vendors
- * Version: 2.1.76
+ * Version: 2.2.3
  * Plugin URI: https://woocommerce.com/products/product-vendors/
  * Description: Set up a multi-vendor marketplace that allows vendors to manage their own products and earn commissions. Run stores similar to Amazon or Etsy.
  * Author: WooCommerce
  * Author URI: https://woocommerce.com
- * Requires at least: 5.6
- * Requires PHP: 7.0
- * Tested up to: 6.1
- * WC requires at least: 6.0
- * WC tested up to: 7.2.1
+ * Requires at least: 6.1
+ * Requires PHP: 7.3
+ * Tested up to: 6.3
+ * WC requires at least: 7.8
+ * WC tested up to: 8.0
  * Text Domain: woocommerce-product-vendors
  * Domain Path: /languages
  *
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! class_exists( 'WC_Product_Vendors' ) ) {
-	define( 'WC_PRODUCT_VENDORS_VERSION', '2.1.76' ); // WRCS: DEFINED_VERSION.
+	define( 'WC_PRODUCT_VENDORS_VERSION', '2.2.3' ); // WRCS: DEFINED_VERSION.
 
 	/**
 	 * Main class.
@@ -59,7 +59,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		 * @version 2.0.0
 		 */
 		public function __clone() {
-			_doing_it_wrong( __FUNCTION__, __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ), WC_PRODUCT_VENDORS_VERSION );
+			_doing_it_wrong( __FUNCTION__, esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ), WC_PRODUCT_VENDORS_VERSION ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		/**
@@ -69,7 +69,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		 * @version 2.0.0
 		 */
 		public function __wakeup() {
-			_doing_it_wrong( __FUNCTION__, __( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ), WC_PRODUCT_VENDORS_VERSION );
+			_doing_it_wrong( __FUNCTION__, esc_html__( 'Cheatin&#8217; huh?', 'woocommerce-product-vendors' ), WC_PRODUCT_VENDORS_VERSION ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		/**
@@ -82,6 +82,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		private function __construct() {
 			add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 			add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
+			add_action( 'init', array( $this, 'init_cli' ) );
 
 			// Subscribe to automated translations.
 			add_filter( 'woocommerce_translations_updates_for_woocommerce-product-vendors', '__return_true' );
@@ -119,6 +120,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		 * @return bool
 		 */
 		public function dependencies() {
+			require_once( dirname( __FILE__ ) . '/includes/class-wc-product-vendor-transient-manager.php' );
 			require_once( dirname( __FILE__ ) . '/includes/class-wc-product-vendors-logger.php' );
 			require_once( dirname( __FILE__ ) . '/includes/class-wc-product-vendors-taxonomy.php' );
 			require_once( dirname( __FILE__ ) . '/includes/class-wc-product-vendors-utils.php' );
@@ -162,6 +164,8 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 			require_once( dirname( __FILE__ ) . '/includes/shipping/per-product/class-wc-product-vendors-per-product-shipping.php' );
 			require_once( dirname( __FILE__ ) . '/includes/class-wc-product-vendors-payout-scheduler.php' );
 
+			require_once( dirname( __FILE__ ) . '/includes/compatibility/class-wc-product-vendors-admin-storage-compatibility.php' );
+
 			// check for bookings.
 			if ( class_exists( 'WC_Bookings' ) ) {
 				require_once __DIR__ . '/includes/integrations/class-wc-product-vendors-bookings.php';
@@ -196,6 +200,18 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		}
 
 		/**
+		 * Initializes the CLI
+		 *
+		 * @access private
+		 * @since 2.0.0
+		 * @version 2.0.0
+		 * @return bool
+		 */
+		public function init_cli() {
+			require_once( dirname( __FILE__ ) . '/includes/class-wc-product-vendors-cli.php' );
+		}
+
+		/**
 		 * Init
 		 *
 		 * @access public
@@ -209,7 +225,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 				return;
 			}
 
-			if ( ! function_exists( 'phpversion' ) ||  version_compare( phpversion(), '7.0', '<' ) ) {
+			if ( ! function_exists( 'phpversion' ) ||  version_compare( phpversion(), '7.3', '<' ) ) {
 				add_action( 'admin_notices', array( $this, 'php_version_notice' ) );
 				return;
 			}
@@ -259,7 +275,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		 * @return string
 		 */
 		public function php_version_notice() {
-			echo '<div class="error"><p>' . wp_kses( sprintf( __( 'WooCommerce Product Vendors requires PHP 7.0 and above. <a href="%s">How to update your PHP version</a>', 'woocommerce' ), 'https://docs.woocommerce.com/document/how-to-update-your-php-version/' ), array(
+			echo '<div class="error"><p>' . wp_kses( sprintf( __( 'WooCommerce Product Vendors requires PHP 7.3 and above. <a href="%s">How to update your PHP version</a>', 'woocommerce' ), 'https://docs.woocommerce.com/document/how-to-update-your-php-version/' ), array(
 				'a' => array(
 					'href'  => array(),
 					'title' => array(),
