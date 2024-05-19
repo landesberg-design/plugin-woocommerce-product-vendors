@@ -5,6 +5,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WC_Product_Vendors_Product_Added_Notice extends WC_Email {
 	/**
+	 * Vendor name
+	 *
+	 * @var string
+	 */
+	public $vendor_name;
+
+	/**
+	 * Product name
+	 *
+	 * @var string
+	 */
+	public $product_name;
+
+	/**
+	 * Product link
+	 *
+	 * @var string
+	 */
+	public $product_link;
+
+	/**
 	 * Constructor
 	 *
 	 * @access public

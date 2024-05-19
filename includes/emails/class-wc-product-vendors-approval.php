@@ -5,6 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WC_Product_Vendors_Approval extends WC_Email {
 	/**
+	 * User role
+	 *
+	 * @var string
+	 */
+	public $role;
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {

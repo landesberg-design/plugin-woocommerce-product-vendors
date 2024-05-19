@@ -3,7 +3,6 @@
 namespace PayPal\Common;
 
 use PayPal\Validation\JsonValidator;
-use PayPal\Validation\ModelAccessorValidator;
 
 /**
  * Generic Model class that all API domain classes extend
@@ -39,7 +38,7 @@ class PayPalModel
      * You can pass data as a json representation or array object. This argument eliminates the need
      * to do $obj->fromJson($data) later after creating the object.
      *
-     * @param null $data
+     * @param array|string|null $data
      * @throws \InvalidArgumentException
      */
     public function __construct($data = null)

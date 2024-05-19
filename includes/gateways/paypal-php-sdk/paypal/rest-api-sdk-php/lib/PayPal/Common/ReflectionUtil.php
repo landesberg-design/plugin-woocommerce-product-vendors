@@ -142,14 +142,14 @@ class ReflectionUtil
      * Returns the properly formatted getter function name based on class name and property
      * Formats the property name to a standard getter function
      *
-     * @param string $class
-     * @param string $propertyName
-     * @return string getter function name
-     */
-    public static function getter($class, $propertyName)
-    {
-        return method_exists($class, "get" . ucfirst($propertyName)) ?
-            "get" . ucfirst($propertyName) :
-            "get" . preg_replace_callback("/([_\-\s]?([a-z0-9]+))/", "self::replace_callback", $propertyName);
-    }
+	 * @param string $class_name class name.
+	 * @param string $property_name property name.
+	 *
+	 * @return string getter function name.
+	 */
+	public static function getter( $class_name, $property_name ) {
+		return method_exists( $class_name, 'get' . ucfirst( $property_name ) ) ?
+			'get' . ucfirst( $property_name ) :
+			'get' . preg_replace_callback( '/([_\-\s]?([a-z0-9]+))/', array( __NAMESPACE__ . '\\ReflectionUtil', 'replace_callback' ), $property_name );
+	}
 }

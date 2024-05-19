@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "woocommerce-product-vendors/commission-field",
+  "version": "0.1.0",
+  "title": "Commission field",
+  "category": "widgets",
+  "icon": "flag",
+  "description": "A block to set the commission for a vendor",
+  "attributes": {},
+  "supports": {
+    "html": false,
+    "inserter": false
+  },
+  "textdomain": "woocommerce-product-vendors",
+  "editorScript": "file:./index.js"
+}

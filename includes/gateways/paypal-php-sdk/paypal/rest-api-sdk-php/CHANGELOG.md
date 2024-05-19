@@ -1,6 +1,34 @@
 PayPal PHP SDK release notes
 ============================
 
+1.14.0
+-----
+* Update sdk_config.ini log.LogLevel comments [#983](https://github.com/paypal/PayPal-PHP-SDK/pull/983).
+* Update RefundCapture.php [#998](https://github.com/paypal/PayPal-PHP-SDK/pull/998).
+* update readme for direct credit card restriction [#1019](https://github.com/paypal/PayPal-PHP-SDK/pull/1019).
+* Add PHP 7.1 and 7.2 in travis build [#1061](https://github.com/paypal/PayPal-PHP-SDK/pull/1061).
+* Custom cache directory line was not written [#1062](https://github.com/paypal/PayPal-PHP-SDK/pull/1062).
+* Re-Order the array keys so that JSON will be an array, not an object [#1034](https://github.com/paypal/PayPal-PHP-SDK/pull/1034).
+* Refactoring tests [#1011](https://github.com/paypal/PayPal-PHP-SDK/pull/1011).
+* Added condition to ignore extra header [#1060](https://github.com/paypal/PayPal-PHP-SDK/pull/1060).
+* Fix links to Developer API Reference [#1095](https://github.com/paypal/PayPal-PHP-SDK/pull/1095).
+* adding target subject to the generate access token call.
+
+1.13.0
+-----
+* Add HUF as a non-decimal currency [#974](https://github.com/paypal/PayPal-PHP-SDK/pull/974).
+* Add `purchaseOrder` in `CartBase` [#939](https://github.com/paypal/PayPal-PHP-SDK/pull/939).
+* Fixed annotation bug [#872](https://github.com/paypal/PayPal-PHP-SDK/pull/872).
+* Update PHPUnit [#979](https://github.com/paypal/PayPal-PHP-SDK/pull/979).
+
+1.12.0
+-----
+* Add `getToken` method to `Payment` class to retrieve EC token from approval URL.
+* Add TLSv1.2 to cipher list [#844](https://github.com/paypal/PayPal-PHP-SDK/pull/844).
+* Use restCall object for function that makes REST requests [#841](https://github.com/paypal/PayPal-PHP-SDK/pull/841).
+* Minor bugfixes [#766](https://github.com/paypal/PayPal-PHP-SDK/issues/766), [#798](https://github.com/paypal/PayPal-PHP-SDK/issues/798), [#845](https://github.com/paypal/PayPal-PHP-SDK/pull/845).
+* Updated samples.
+
 1.11.0
 -----
 * Update third party payment sample with PayPal payment.

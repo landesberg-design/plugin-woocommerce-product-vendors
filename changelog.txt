@@ -1,5 +1,42 @@
 *** Product Vendors Changelog ***
 
+2024-05-02 - version 2.2.8
+* Fix - Fatal error when paying out commissions via PayPal.
+* Fix - Automatically marking commissions paid when paying out via PayPal.
+* Update - PayPal PHP SDK updated to version 1.14.0.
+* Dev - Bump WooCommerce "tested up to" version 8.8.
+* Dev - Bump WooCommerce minimum supported version to 8.6.
+
+2024-04-08 - version 2.2.7
+* Add - Compatibility for the new Product Block Editor.
+* Dev - Bump WooCommerce "tested up to" version 8.7.
+* Dev - Bump WooCommerce minimum supported version to 8.5.
+* Dev - Bump WordPress "tested up to" version 6.5.
+* Dev - Bump WordPress minimum supported version to 6.3.
+
+2024-02-05 - version 2.2.6
+* Dev - Bump PHP "tested up to" version 8.3.
+* Dev - Bump WooCommerce "tested up to" version 8.5.
+* Dev - Bump WooCommerce minimum supported version to 8.3.
+* Dev - Bump WordPress minimum supported version to 6.3.
+* Tweak - WC 8.5 compatibility.
+
+2024-01-16 - version 2.2.5
+* Dev - Declare compatibility with WooCommerce Blocks.
+* Dev - Declare WooPayments compatibility in readme.
+* Dev - Bump PHP minimum supported version to 7.4.
+* Dev - Bump WooCommerce "tested up to" version 8.4.
+* Dev - Bump WooCommerce minimum supported version to 8.2.
+* Fix - Remove the affected commission when an order item is removed.
+
+2023-12-11 - version 2.2.4
+* Dev - Bump WooCommerce "tested up to" version 8.3.
+* Dev - Bump WooCommerce minimum supported version to 8.1.
+* Dev - Bump WordPress "tested up to" version 6.4.
+* Dev - Bump WordPress minimum supported version to 6.2.
+* Dev - Add additional Playwright end-to-end tests covering identified Critical Flows.
+* Tweak - Update PHPCS and PHPCompatibility GitHub Actions.
+
 2023-10-19 - version 2.2.3
 * Dev - Added Playwright end-to-end tests.
 * Dev - Resolve PHP Coding Standards issues.

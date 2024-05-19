@@ -5,6 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WC_Product_Vendors_Cancelled_Order_Email_To_Vendor extends WC_Email {
 	/**
+	 * Vendor ID
+	 *
+	 * @var int
+	 */
+	public $vendor;
+
+	/**
 	 * Constructor
 	 *
 	 * @access public

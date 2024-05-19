@@ -13,6 +13,21 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @version  2.0.0
  */
 class WC_Product_Vendors_Per_Product_Shipping_Method extends WC_Shipping_Method {
+
+	/**
+	 * Cost per product.
+	 *
+	 * @var float $cost Per product cost.
+	 */
+	public $cost;
+
+	/**
+	 * Order fee.
+	 *
+	 * @var float $order_fee Order fee.
+	 */
+	public $order_fee;
+
 	/**
 	 * Constructor
 	 */

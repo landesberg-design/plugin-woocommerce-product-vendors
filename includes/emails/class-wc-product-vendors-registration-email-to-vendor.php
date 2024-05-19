@@ -5,6 +5,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WC_Product_Vendors_Registration_Email_To_Vendor extends WC_Email {
 	/**
+	 * User email
+	 *
+	 * @var string
+	 */
+	public $user_email;
+
+	/**
+	 * User login
+	 *
+	 * @var string
+	 */
+	public $user_login;
+
+	/**
+	 * Password reset key
+	 *
+	 * @var string
+	 */
+	public $password_reset_key;
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {

@@ -4,6 +4,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class WC_Product_Vendors_Order_Fulfill_Status_To_Admin extends WC_Email {
+
+	/**
+	 * Vendor name
+	 *
+	 * @var string
+	 */
+	public $vendor_name;
+
+	/**
+	 * Fulfillment status
+	 *
+	 * @var string
+	 */
+	public $fulfill_status;
+
+	/**
+	 * Order
+	 *
+	 * @var object
+	 */
+	public $order;
+
+	/**
+	 * Order item name
+	 *
+	 * @var string
+	 */
+	public $order_item_name;
+
 	/**
 	 * Constructor
 	 */

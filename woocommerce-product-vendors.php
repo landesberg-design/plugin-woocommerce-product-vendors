@@ -1,16 +1,18 @@
 <?php
 /**
  * Plugin Name: WooCommerce Product Vendors
- * Version: 2.2.3
+ * Requires Plugins: woocommerce
+ * Version: 2.2.8
  * Plugin URI: https://woocommerce.com/products/product-vendors/
  * Description: Set up a multi-vendor marketplace that allows vendors to manage their own products and earn commissions. Run stores similar to Amazon or Etsy.
  * Author: WooCommerce
  * Author URI: https://woocommerce.com
- * Requires at least: 6.1
- * Requires PHP: 7.3
- * Tested up to: 6.3
- * WC requires at least: 7.8
- * WC tested up to: 8.0
+ * Requires at least: 6.3
+ * Tested up to: 6.5
+ * Requires PHP: 7.4
+ * PHP tested up to: 8.3
+ * WC requires at least: 8.6
+ * WC tested up to: 8.8
  * Text Domain: woocommerce-product-vendors
  * Domain Path: /languages
  *
@@ -25,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! class_exists( 'WC_Product_Vendors' ) ) {
-	define( 'WC_PRODUCT_VENDORS_VERSION', '2.2.3' ); // WRCS: DEFINED_VERSION.
+	define( 'WC_PRODUCT_VENDORS_VERSION', '2.2.8' ); // WRCS: DEFINED_VERSION.
 
 	/**
 	 * Main class.
@@ -81,7 +83,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		 */
 		private function __construct() {
 			add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
-			add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
+			add_action( 'before_woocommerce_init', array( $this, 'declare_feature_compatibility' ) );
 			add_action( 'init', array( $this, 'init_cli' ) );
 
 			// Subscribe to automated translations.
@@ -180,6 +182,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 
 			// COT Compatibility.
 			require_once( __DIR__ . '/includes/compatibility/class-wc-product-vendors-cot-compatibility.php' );
+			require_once __DIR__ . '/includes/compatibility/class-wc-product-vendors-product-editor-compatibility.php';
 
 			return true;
 		}
@@ -225,7 +228,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 				return;
 			}
 
-			if ( ! function_exists( 'phpversion' ) ||  version_compare( phpversion(), '7.3', '<' ) ) {
+			if ( ! function_exists( 'phpversion' ) ||  version_compare( phpversion(), '7.4', '<' ) ) {
 				add_action( 'admin_notices', array( $this, 'php_version_notice' ) );
 				return;
 			}
@@ -275,7 +278,7 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		 * @return string
 		 */
 		public function php_version_notice() {
-			echo '<div class="error"><p>' . wp_kses( sprintf( __( 'WooCommerce Product Vendors requires PHP 7.3 and above. <a href="%s">How to update your PHP version</a>', 'woocommerce' ), 'https://docs.woocommerce.com/document/how-to-update-your-php-version/' ), array(
+			echo '<div class="error"><p>' . wp_kses( sprintf( __( 'WooCommerce Product Vendors requires PHP 7.4 and above. <a href="%s">How to update your PHP version</a>', 'woocommerce' ), 'https://docs.woocommerce.com/document/how-to-update-your-php-version/' ), array(
 				'a' => array(
 					'href'  => array(),
 					'title' => array(),
@@ -284,13 +287,14 @@ if ( ! class_exists( 'WC_Product_Vendors' ) ) {
 		}
 
 		/**
-		 * Declares HPOS compatibility
+		 * Declares feature compatibility
 		 *
 		 * @since 2.1.68
 		 */
-		public function declare_hpos_compatibility() {
+		public function declare_feature_compatibility() {
 			if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
-				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__ );
+				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'product_block_editor', __FILE__ );
 			}
 		}
 	}

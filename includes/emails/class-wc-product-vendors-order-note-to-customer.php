@@ -5,6 +5,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WC_Product_Vendors_Order_Note_To_Customer extends WC_Email {
 	/**
+	 * Vendor ID
+	 *
+	 * @var int
+	 */
+	public $vendor;
+
+	/**
+	 * Order note
+	 *
+	 * @var string
+	 */
+	public $note;
+
+	/**
 	 * Constructor
 	 *
 	 * @access public

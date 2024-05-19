@@ -218,10 +218,7 @@ class WC_Product_Vendors_Webhook_Handler {
 		$signatureVerification->setWebhookId( $this->webhook_id );
 		$signatureVerification->setTransmissionSig( $request_headers['PAYPAL-TRANSMISSION-SIG'] );
 		$signatureVerification->setTransmissionTime( $request_headers['PAYPAL-TRANSMISSION-TIME'] );
-
-		$webhookEvent = new WebhookEvent();
-		$webhookEvent->fromJson( $request_body );
-		$signatureVerification->setWebhookEvent( $webhookEvent );
+		$signatureVerification->setRequestBody( $request_body );
 
 		try {
 			$results = $signatureVerification->post( $this->apiContext );

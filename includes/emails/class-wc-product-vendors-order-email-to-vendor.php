@@ -5,6 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WC_Product_Vendors_Order_Email_To_Vendor extends WC_Email {
 	/**
+	 * Vendor ID
+	 *
+	 * @var int
+	 */
+	public $vendor;
+
+	/**
 	 * Constructor
 	 *
 	 * @since 2.1.70 Move subscription renewal email notification related code to WC_Product_Vendors_Order_Email_To_Vendor.

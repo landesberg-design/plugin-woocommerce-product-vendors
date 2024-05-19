@@ -10,6 +10,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class WC_Product_Vendors_New_Renewal_Email_To_Vendor extends WC_Email {
 	/**
+	 * Vendor ID
+	 *
+	 * @var int
+	 */
+	public $vendor;
+
+	/**
 	 * Constructor
 	 *
 	 * @access public
