@@ -1086,7 +1086,7 @@ class WC_Product_Vendors_Store_Admin {
 				),
 
 				array(
-					'title'    => __( '(Sandbox) PayPal Payouts API Secret', 'woocommerce-product-vendors' ),
+					'title'    => __( '(Sandbox) PayPal Payouts API Client Secret', 'woocommerce-product-vendors' ),
 					'desc'     => __( 'Enter the API Client Secret.', 'woocommerce-product-vendors' ),
 					'id'       => 'wcpv_vendor_settings_paypal_masspay_client_secret_sandbox',
 					'default'  => '',

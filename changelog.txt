@@ -1,5 +1,10 @@
 *** Product Vendors Changelog ***
 
+2024-05-20 - version 2.2.9
+* Dev - Bump WooCommerce "tested up to" version 8.9.
+* Dev - Bump WooCommerce minimum supported version to 8.7.
+* Update - Ensure labels are consistent between sandbox and live settings.
+
 2024-05-02 - version 2.2.8
 * Fix - Fatal error when paying out commissions via PayPal.
 * Fix - Automatically marking commissions paid when paying out via PayPal.
