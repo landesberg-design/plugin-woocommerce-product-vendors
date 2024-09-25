@@ -186,7 +186,7 @@ class WC_Product_Vendors_Install {
 		self::update_commission_db_version();
 		self::update_per_product_shipping_db_version();
 
-		delete_option( 'wcpv_show_update_notice' );			
+		delete_option( 'wcpv_show_update_notice' );
 		add_option( 'wcpv_show_update_notice', false );
 
 		return true;
@@ -205,7 +205,7 @@ class WC_Product_Vendors_Install {
 
 		$commissions = get_posts( array( 'posts_per_page' => 1, 'post_type' => 'shop_commission', 'post_status' => array( 'publish', 'private' ) ) );
 		$vendors = $wpdb->get_row( "SELECT term_id FROM $wpdb->term_taxonomy WHERE `taxonomy` = 'shop_vendor'" );
-		
+
 		// if 1.0.0 commissions or vendors exists we need to update
 		if ( ! empty( $commissions ) || ( ! is_wp_error( $vendors ) && ! empty( $vendors ) ) ) {
 			return true;
@@ -272,7 +272,7 @@ class WC_Product_Vendors_Install {
 		self::clear_reports_transients();
 
 		self::$roles->add_manager_caps();
-		
+
 		flush_rewrite_rules();
 
 		return true;
@@ -343,7 +343,7 @@ class WC_Product_Vendors_Install {
 	 *
 	 * @access public
 	 * @since 2.0.0
-	 * @sicne x.x.x Replace DELETE SQL query with utility class function
+	 * @since 2.2.0 Replace DELETE SQL query with utility class function
 	 * @version 2.0.0
 	 * @return bool
 	 */

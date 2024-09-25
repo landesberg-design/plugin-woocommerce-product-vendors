@@ -47,9 +47,15 @@ class WC_Product_Vendors_Per_Product_Shipping_Admin {
 			return;
 		}
 
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$asset_file = WC_PRODUCT_VENDORS_PATH . '/build/frontend/wcpv-frontend-scripts.asset.php';
 
-		wp_register_script( 'wcpv-per-product-shipping-script', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/js/wcpv-per-product-shipping' . $suffix . '.js', array( 'jquery' ), WC_PRODUCT_VENDORS_VERSION, true );
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
+
+		$asset_file = require_once $asset_file;
+
+		wp_register_script( 'wcpv-per-product-shipping-script', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/frontend/wcpv-per-product-shipping.js', $asset_file['dependencies'] ?? array(), $asset_file['version'] ?? WC_PRODUCT_VENDORS_VERSION, true );
 
 		$localized_vars = array(
 			'i18n_no_row_selected'      => __( 'No row selected', 'woocommerce-product-vendors' ),
@@ -64,8 +70,6 @@ class WC_Product_Vendors_Per_Product_Shipping_Admin {
 		wp_localize_script( 'wcpv-per-product-shipping-script', 'wcpv_per_product_shipping_local', $localized_vars );
 
 		wp_enqueue_script( 'wcpv-per-product-shipping-script' );
-
-		return true;
 	}
 
 

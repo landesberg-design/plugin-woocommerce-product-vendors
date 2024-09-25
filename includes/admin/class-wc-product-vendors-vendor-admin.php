@@ -691,11 +691,17 @@ class WC_Product_Vendors_Vendor_Admin {
 	public function enqueue_scripts_styles() {
 		$current_screen = get_current_screen();
 
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$asset_file = WC_PRODUCT_VENDORS_PATH . '/build/admin/wcpv-vendor-admin-scripts.asset.php';
 
-		wp_register_style( 'wcpv-admin-styles', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/css/wcpv-admin-styles.css', array(), WC_PRODUCT_VENDORS_VERSION );
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
 
-		wp_register_script( 'wcpv-vendor-admin-scripts', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/js/wcpv-vendor-admin-scripts' . $suffix . '.js', array( 'jquery' ), WC_PRODUCT_VENDORS_VERSION, true );
+		$asset_file = require_once $asset_file;
+
+		wp_register_style( 'wcpv-admin-styles', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/admin/wcpv-admin-scripts.css', array(), WC_PRODUCT_VENDORS_VERSION );
+
+		wp_register_script( 'wcpv-vendor-admin-scripts', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/admin/wcpv-vendor-admin-scripts.js', $asset_file['dependencies'] ?? array(), $asset_file['version'] ?? WC_PRODUCT_VENDORS_VERSION, true );
 
 		if ( 'toplevel_page_wcpv-vendor-reports' === $current_screen->id ) {
 			global $wp_scripts;
@@ -711,7 +717,7 @@ class WC_Product_Vendors_Vendor_Admin {
 
 			wp_enqueue_script( 'woocommerce_admin' );
 
-			wp_enqueue_script( 'wc-reports', WC()->plugin_url() . '/assets/js/admin/reports' . $suffix . '.js', array( 'jquery', 'jquery-ui-datepicker' ), WC_VERSION );
+			wp_enqueue_script( 'wc-reports', WC()->plugin_url() . '/assets/js/admin/reports.js', array( 'jquery', 'jquery-ui-datepicker' ), WC_VERSION, true );
 
 			wp_enqueue_script( 'flot' );
 			wp_enqueue_script( 'flot-resize' );
@@ -736,7 +742,7 @@ class WC_Product_Vendors_Vendor_Admin {
 
 		// vendor settings page
 		if ( 'toplevel_page_wcpv-vendor-settings' === $current_screen->id ) {
-			wp_enqueue_script( 'wc-users', WC()->plugin_url() . '/assets/js/admin/users' . $suffix . '.js', array( 'jquery', 'wc-enhanced-select' ), WC_VERSION, true );
+			wp_enqueue_script( 'wc-users', WC()->plugin_url() . '/assets/js/admin/users.js', array( 'jquery', 'wc-enhanced-select' ), WC_VERSION, true );
 
 			$countries = array_merge( WC()->countries->get_allowed_country_states(), WC()->countries->get_shipping_country_states() );
 			$countries = function_exists( 'wc_esc_json' ) ? wc_esc_json( wp_json_encode( $countries ) ) : _wp_specialchars( wp_json_encode( $countries ), ENT_QUOTES, 'UTF-8', true );

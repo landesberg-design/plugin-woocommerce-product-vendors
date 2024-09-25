@@ -45,7 +45,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								'textarea_rows' => 5,
 							);
 
-							wp_editor( htmlspecialchars_decode( $profile ), 'wcpv_vendor_info', $args );
+							wp_editor( htmlspecialchars_decode( $profile, ENT_COMPAT ), 'wcpv_vendor_info', $args );
 						?>
 
 						<p><?php esc_html_e( 'Enter a public vendor profile that store customers will see.', 'woocommerce-product-vendors' ); ?></p>

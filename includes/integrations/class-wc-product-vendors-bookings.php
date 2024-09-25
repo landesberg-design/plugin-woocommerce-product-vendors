@@ -596,7 +596,7 @@ class WC_Product_Vendors_Bookings {
 	 * Clears the recent bookings cache on dashboard
 	 *
 	 * @since 2.0.21
-	 * @sicne x.x.x Use WC_Product_Vendor_Transient_Manager class to delete transient data.
+	 * @since 2.2.0 Use WC_Product_Vendor_Transient_Manager class to delete transient data.
 	 * @version 2.0.21
 	 * @return bool
 	 */

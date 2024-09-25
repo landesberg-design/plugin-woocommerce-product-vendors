@@ -315,7 +315,7 @@ class WC_Product_Vendors_Emails {
 
 			$vendor_email = $vendor_data['email'];
 
-			$stock = html_entity_decode( strip_tags( $product->get_stock_quantity() ) );
+			$stock = html_entity_decode( wp_strip_all_tags( $product->get_stock_quantity() ), ENT_QUOTES );
 
 			$message = sprintf( __( '%s is low in stock.', 'woocommerce-product-vendors' ), html_entity_decode( strip_tags( $product->get_formatted_name() ), ENT_QUOTES, get_bloginfo( 'charset' ) ) ) . ' ' . sprintf( __( 'There are %d left', 'woocommerce-product-vendors' ), $stock );
 

@@ -1474,14 +1474,14 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Clear low stock transient.
 	 *
-	 * @deprecated x.x.x
+	 * @deprecated 2.2.0
 	 *
 	 * @since 2.1.15
 	 */
 	public static function clear_low_stock_transient() {
 		_deprecated_function(
 			__FUNCTION__,
-			'x.x.x',
+			'2.2.0',
 			'WC_Product_Vendor_Transient_Manager::make()->delete()'
 		);
 		delete_transient( 'wcpv_reports_wg_lowstock_' . self::get_logged_in_vendor() );
@@ -1490,14 +1490,14 @@ class WC_Product_Vendors_Utils {
 	/**
 	 * Clear out of stock transient.
 	 *
-	 * @deprecated x.x.x
+	 * @deprecated 2.2.0
 	 *
 	 * @since 2.1.15
 	 */
 	public static function clear_out_of_stock_transient() {
 		_deprecated_function(
 			__FUNCTION__,
-			'x.x.x',
+			'2.2.0',
 			'WC_Product_Vendor_Transient_Manager::make()->delete()'
 		);
 

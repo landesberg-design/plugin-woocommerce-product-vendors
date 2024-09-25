@@ -50,15 +50,19 @@ class WC_Product_Vendors_Vendor_Frontend {
 	 * @return bool
 	 */
 	public function register_frontend_scripts_styles() {
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$asset_file = WC_PRODUCT_VENDORS_PATH . '/build/frontend/wcpv-frontend-scripts.asset.php';
 
-		wp_register_script( 'wcpv-frontend-scripts', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/js/wcpv-frontend-scripts' . $suffix . '.js', array( 'jquery' ), WC_PRODUCT_VENDORS_VERSION );
-		
-		wp_register_style( 'wcpv-frontend-styles', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/css/wcpv-frontend-styles.css', null, WC_PRODUCT_VENDORS_VERSION );
-		
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
+
+		$asset_file = require_once $asset_file;
+
+		wp_register_script( 'wcpv-frontend-scripts', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/frontend/wcpv-frontend-scripts.js', $asset_file['dependencies'] ?? array(), $asset_file['version'] ?? WC_PRODUCT_VENDORS_VERSION, true );
+
+		wp_register_style( 'wcpv-frontend-styles', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/frontend/wcpv-frontend-scripts.css', null, $asset_file['version'] ?? WC_PRODUCT_VENDORS_VERSION );
+
 		wp_enqueue_style( 'wcpv-frontend-styles' );
-
-		return true;
 	}
 
 	/**

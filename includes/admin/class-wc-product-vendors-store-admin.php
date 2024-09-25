@@ -229,11 +229,16 @@ class WC_Product_Vendors_Store_Admin {
 	public function enqueue_scripts_styles() {
 		$current_screen = get_current_screen();
 
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+		$asset_file = WC_PRODUCT_VENDORS_PATH . '/build/admin/wcpv-admin-scripts.asset.php';
 
-		wp_register_script( 'wcpv-admin-scripts', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/js/wcpv-admin-scripts' . $suffix . '.js', array( 'jquery' ), WC_PRODUCT_VENDORS_VERSION, true );
+		if ( ! file_exists( $asset_file ) ) {
+			return;
+		}
 
-		wp_register_style( 'wcpv-admin-styles', WC_PRODUCT_VENDORS_PLUGIN_URL . '/assets/css/wcpv-admin-styles.css', array(), WC_PRODUCT_VENDORS_VERSION );
+		$asset_file = require_once $asset_file;
+
+		wp_register_script( 'wcpv-admin-scripts', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/admin/wcpv-admin-scripts.js', $asset_file['dependencies'] ?? array(), $asset_file['version'] ?? WC_PRODUCT_VENDORS_VERSION, true );
+		wp_register_style( 'wcpv-admin-styles', WC_PRODUCT_VENDORS_PLUGIN_URL . '/build/admin/wcpv-admin-scripts.css', array(), $asset_file['version'] ?? WC_PRODUCT_VENDORS_VERSION );
 
 		$localized_vars = array(
 			'isPendingVendor'           => current_user_can( 'wc_product_vendors_pending_vendor' ),
@@ -267,7 +272,7 @@ class WC_Product_Vendors_Store_Admin {
 
 			wp_enqueue_style( 'wcpv-admin-styles' );
 
-			wp_enqueue_script( 'wc-users', WC()->plugin_url() . '/assets/js/admin/users' . $suffix . '.js', array( 'jquery', 'wc-enhanced-select' ), WC_VERSION, true );
+			wp_enqueue_script( 'wc-users', WC()->plugin_url() . '/assets/js/admin/users.js', array( 'jquery', 'wc-enhanced-select' ), WC_VERSION, true );
 
 			$countries = array_merge( WC()->countries->get_allowed_country_states(), WC()->countries->get_shipping_country_states() );
 			$countries = function_exists( 'wc_esc_json' ) ? wc_esc_json( wp_json_encode( $countries ) ) : _wp_specialchars( wp_json_encode( $countries ), ENT_QUOTES, 'UTF-8', true );

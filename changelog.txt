@@ -1,5 +1,14 @@
 *** Product Vendors Changelog ***
 
+2024-08-26 - version 2.3.0
+* Fix - PHPCompatibility errors reported by the QIT test.
+* Dev - Bump WooCommerce "tested up to" version 9.1.
+* Dev - Bump WooCommerce minimum supported version to 8.9.
+* Dev - Bump WordPress minimum supported version to 6.4.
+* Dev - Bump WordPress "tested up to" version 6.6.
+* Dev - Update NPM packages and node version to v20 to modernize developer experience.
+* Dev - Fix QIT E2E tests and add support for a few new test types.
+
 2024-05-20 - version 2.2.9
 * Dev - Bump WooCommerce "tested up to" version 8.9.
 * Dev - Bump WooCommerce minimum supported version to 8.7.
